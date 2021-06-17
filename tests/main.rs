@@ -59,11 +59,7 @@ impl IntoIterator for TestInput {
 }
 
 impl TestInput {
-    fn new(file: PathBuf) -> Self {
-        let input = std::fs::read(file);
-        assert!(input.is_ok());
-        let input = input.unwrap();
-
+    fn new_aux(input: &[u8]) -> Self {
         let mut test_input = TestInput { chunks: Vec::new() };
         let mut current = Vec::<u8>::new();
         let mut client = true;
@@ -96,6 +92,12 @@ impl TestInput {
         test_input.append(client, current);
         test_input
     }
+    fn new(file: PathBuf) -> Self {
+        let input = std::fs::read(file);
+        assert!(input.is_ok());
+        let input = input.unwrap();
+        return TestInput::new_aux(&input);
+    }
 
     fn append(&mut self, client: bool, data: Vec<u8>) {
         if client {
@@ -107,13 +109,13 @@ impl TestInput {
 }
 
 #[derive(Debug)]
-enum TestError {
+pub enum TestError {
     //MultipleClientChunks,
     //MultipleServerChunks,
     StreamError,
 }
 
-struct Test {
+pub struct Test {
     connp: ConnectionParser,
     basedir: PathBuf,
 }
@@ -157,7 +159,7 @@ impl Test {
             .set_user_data(Box::new(MainUserData::new()));
         t
     }
-    fn run(&mut self, file: &str) -> std::result::Result<(), TestError> {
+    fn run_aux(&mut self, test: TestInput) -> std::result::Result<(), TestError> {
         let tv_start = DateTime::<Utc>::from(SystemTime::now());
         self.connp.open(
             Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
@@ -167,9 +169,6 @@ impl Test {
             Some(tv_start),
         );
 
-        let mut path = self.basedir.clone();
-        path.push(file);
-        let test = TestInput::new(path);
         let mut request_buf: Option<Vec<u8>> = None;
         let mut response_buf: Option<Vec<u8>> = None;
         for chunk in test {
@@ -247,6 +246,16 @@ impl Test {
         self.connp
             .close(Some(DateTime::<Utc>::from(SystemTime::now())));
         Ok(())
+    }
+    fn run(&mut self, file: &str) -> std::result::Result<(), TestError> {
+        let mut path = self.basedir.clone();
+        path.push(file);
+        let test = TestInput::new(path);
+        return self.run_aux(test);
+    }
+    pub fn run_slice(&mut self, data: &[u8]) -> std::result::Result<(), TestError> {
+        let test = TestInput::new_aux(data);
+        return self.run_aux(test);
     }
 }
 
