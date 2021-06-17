@@ -274,6 +274,8 @@ fn request_body_data(d: &mut Data) -> Result<()> {
 }
 
 fuzz_target!(|data: &[u8]| {
+    // dummy value for env variable to make config happy
+    env::set_var("srcdir", ".");
     let mut t = Test::new(TestConfig());
     t.run_slice(data);
 });
