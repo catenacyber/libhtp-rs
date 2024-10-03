@@ -37,7 +37,10 @@ impl Bstr {
     /// Split the Bstr into a a collection of substrings, seperated by the given byte string.
     /// Each element yielded is guaranteed not to include the splitter substring.
     /// Returns a Vector of the substrings.
-    pub fn split_str_collect<'b, B: ?Sized + AsRef<[u8]>>(&'b self, splitter: &'b B) -> Vec<&[u8]> {
+    pub fn split_str_collect<'b, B: ?Sized + AsRef<[u8]>>(
+        &'b self,
+        splitter: &'b B,
+    ) -> Vec<&'b [u8]> {
         self.s.as_bstr().split_str(splitter.as_ref()).collect()
     }
 
