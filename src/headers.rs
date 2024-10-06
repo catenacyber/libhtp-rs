@@ -371,19 +371,23 @@ impl Parser {
     /// Parse one header name
     fn name(&self) -> impl Fn(&[u8]) -> IResult<&[u8], Name> + '_ {
         move |input| {
-            let mut terminated = false;
+            let mut terminated = 0;
             let mut offset = 0;
             for i in 0..input.len() {
-                if !terminated {
+                if terminated == 0 {
                     if input[i] == b':' {
                         offset = i;
                         break;
-                    } else if input[i] == b'\n' {
-                        terminated = true;
+                    } else if input[i] == b'\n'
+                        || (self.side == Side::Response && input[i] == b'\r')
+                    {
+                        terminated = input[i];
                     }
                 } else {
                     if input[i] == b' ' {
-                        terminated = false;
+                        terminated = 0;
+                    } else if input[i] == b'\n' && terminated == b'\r' {
+                        terminated = input[i];
                     } else {
                         offset = i - 1;
                         break;
@@ -550,7 +554,8 @@ mod test {
                 Header::new_with_flags(b"", HeaderFlags::NAME_EMPTY, b"v2 v2+", HeaderFlags::FOLDING),
                 Header::new_with_flags(b"k3", 0, b"v3", 0),
                 Header::new_with_flags(b"", HeaderFlags::MISSING_COLON, b"k4 v4", HeaderFlags::MISSING_COLON),
-                Header::new_with_flags(b"k\r5", HeaderFlags::NAME_NON_TOKEN_CHARS, b"v", 0),
+                Header::new_with_flags(b"", HeaderFlags::MISSING_COLON, b"k", HeaderFlags::MISSING_COLON),
+                Header::new_with_flags(b"5", 0, b"v", 0),
                 Header::new_with_flags(b"", HeaderFlags::MISSING_COLON, b"5", HeaderFlags::MISSING_COLON),
                 Header::new_with_flags(b"", HeaderFlags::MISSING_COLON, b"more", HeaderFlags::MISSING_COLON),
                 ], true)))))]
