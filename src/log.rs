@@ -21,6 +21,10 @@ pub enum HtpLogCode {
     REQUEST_CHUNK_EXTENSION,
     /// Response chunk exension.
     RESPONSE_CHUNK_EXTENSION,
+    /// Request has too many headers.
+    REQUEST_TOO_MANY_HEADERS,
+    /// Response has too many headers.
+    RESPONSE_TOO_MANY_HEADERS,
     /// Request transfer-encoding invalid.
     INVALID_TRANSFER_ENCODING_VALUE_IN_REQUEST,
     /// Response transfer-encoding invalid.

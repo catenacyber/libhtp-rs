@@ -876,6 +876,7 @@ impl ConnectionParser {
     /// into a single buffer before invoking the parsing function.
     fn process_response_header(&mut self, header: Header) -> Result<()> {
         let mut repeated = false;
+        let hl = self.cfg.number_headers_limit as usize;
         let resp = self.response_mut();
         if resp.is_none() {
             return Err(HtpStatus::ERROR);
@@ -917,6 +918,18 @@ impl ConnectionParser {
                 h_existing.value.extend_from_slice(header.value.as_slice());
             }
         } else {
+            if resp.response_headers.elements.len() > hl {
+                if !resp.flags.is_set(HtpFlags::HEADERS_TOO_MANY) {
+                    htp_warn!(
+                        self.logger,
+                        HtpLogCode::RESPONSE_TOO_MANY_HEADERS,
+                        "Too many response headers"
+                    );
+                    let resp = self.response_mut().unwrap();
+                    resp.flags.set(HtpFlags::HEADERS_TOO_MANY);
+                }
+                return Err(HtpStatus::ERROR);
+            }
             resp.response_headers.elements.push(header);
         }
         let resp = self.response_mut().unwrap();

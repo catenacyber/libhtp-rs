@@ -111,6 +111,8 @@ pub struct Config {
     pub flush_incomplete: bool,
     /// Maximum number of transactions
     pub max_tx: u32,
+    /// Maximum number of headers
+    pub number_headers_limit: u32,
 }
 
 impl Default for Config {
@@ -149,6 +151,7 @@ impl Default for Config {
             compression_options: Options::default(),
             flush_incomplete: false,
             max_tx: 512,
+            number_headers_limit: 1024,
         }
     }
 }

@@ -704,6 +704,7 @@ impl ConnectionParser {
     fn process_request_header(&mut self, header: Header) -> Result<()> {
         // Try to parse the header.
         // ensured by caller
+        let hl = self.cfg.number_headers_limit as usize;
         let req = self.request_mut().unwrap();
         let mut repeated = false;
         let reps = req.request_header_repetitions;
@@ -741,6 +742,18 @@ impl ConnectionParser {
                 h_existing.value.extend_from_slice(header.value.as_slice());
             }
         } else {
+            if req.request_headers.elements.len() > hl {
+                if !req.flags.is_set(HtpFlags::HEADERS_TOO_MANY) {
+                    htp_warn!(
+                        self.logger,
+                        HtpLogCode::REQUEST_TOO_MANY_HEADERS,
+                        "Too many request headers"
+                    );
+                    let req = self.request_mut().unwrap();
+                    req.flags.set(HtpFlags::HEADERS_TOO_MANY);
+                }
+                return Err(HtpStatus::ERROR);
+            }
             req.request_headers.elements.push(header);
         }
         let req = self.request_mut().unwrap();

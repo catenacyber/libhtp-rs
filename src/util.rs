@@ -143,6 +143,8 @@ impl HtpFlags {
     pub const REQUEST_MISSING_BYTES: u64 = (0x0010_0000_0000 | Self::MISSING_BYTES);
     /// Missing bytes in the response data.
     pub const RESPONSE_MISSING_BYTES: u64 = (0x0020_0000_0000 | Self::MISSING_BYTES);
+    /// Too many headers, log only once.
+    pub const HEADERS_TOO_MANY: u64 = 0x0040_0000_0000;
 }
 
 /// Enumerates possible EOLs
