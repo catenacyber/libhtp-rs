@@ -297,12 +297,18 @@ impl ConnectionParser {
             }
             let resp = resp.unwrap();
 
-            resp.response_message_len = resp.response_message_len.wrapping_add(bytes_to_consume);
-            // Create a new gap of the appropriate length
-            let parser_data = ParserData::from(bytes_to_consume as usize);
-            // Send the gap to the data hooks
-            let mut tx_data = Data::new(resp, &parser_data);
-            self.response_run_hook_body_data(&mut tx_data)?;
+            if resp.response_content_encoding_processing == HtpContentEncoding::NONE {
+                resp.response_message_len =
+                    resp.response_message_len.wrapping_add(bytes_to_consume);
+                // Create a new gap of the appropriate length
+                let parser_data = ParserData::from(bytes_to_consume as usize);
+                // Send the gap to the data hooks
+                let mut tx_data = Data::new(resp, &parser_data);
+                self.response_run_hook_body_data(&mut tx_data)?;
+            } else {
+                // end decompression on gap
+                self.response_body_data(None)?;
+            }
         } else {
             // Consume the data.
             self.response_body_data(Some(&data.as_slice()[0..bytes_to_consume as usize]))?;
