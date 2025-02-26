@@ -179,13 +179,13 @@ pub unsafe extern "C" fn htp_header_value_ptr(header: *const Header) -> *const u
 ///
 /// tx: Header pointer.
 ///
-/// Returns the length or -1 on error.
+/// Returns the length or 0 on a NULL pointer.
 /// # Safety
 /// When calling this method, you have to ensure that header is either properly initialized or NULL
 #[no_mangle]
-pub unsafe extern "C" fn htp_header_value_len(header: *const Header) -> isize {
+pub unsafe extern "C" fn htp_header_value_len(header: *const Header) -> usize {
     header
         .as_ref()
-        .map(|header| isize::try_from(header.value.len()).unwrap_or(-1))
-        .unwrap_or(-1)
+        .map(|header| header.value.len())
+        .unwrap_or(0)
 }
