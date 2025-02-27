@@ -5,7 +5,7 @@ use crate::{
     connection::ConnectionFlags,
     connection_parser::ParserData,
     error::Result,
-    log::{HtpLogCode, HtpLogLevel},
+    log::HtpLogCode,
     transaction::{
         HtpAuthType, HtpProtocol, HtpRequestProgress, HtpResponseNumber, HtpResponseProgress,
         HtpTransferCoding, Transaction,
@@ -833,7 +833,6 @@ fn InvalidHostname1() {
     let tx = t.connp.tx(0).unwrap();
     assert!(tx.flags.is_set(HtpFlags::HOSTH_INVALID));
     assert!(tx.flags.is_set(HtpFlags::HOSTU_INVALID));
-    assert!(tx.flags.is_set(HtpFlags::HOST_INVALID));
 }
 
 #[test]
@@ -847,7 +846,6 @@ fn InvalidHostname2() {
 
     assert!(!tx.flags.is_set(HtpFlags::HOSTH_INVALID));
     assert!(tx.flags.is_set(HtpFlags::HOSTU_INVALID));
-    assert!(tx.flags.is_set(HtpFlags::HOST_INVALID));
 }
 
 #[test]
@@ -861,7 +859,6 @@ fn InvalidHostname3() {
 
     assert!(tx.flags.is_set(HtpFlags::HOSTH_INVALID));
     assert!(!tx.flags.is_set(HtpFlags::HOSTU_INVALID));
-    assert!(tx.flags.is_set(HtpFlags::HOST_INVALID));
 }
 
 #[test]
@@ -1094,18 +1091,6 @@ fn InvalidResponseHeaders2() {
 
     assert_response_header_eq!(tx, "", "Empty Name");
     assert_response_header_flag_contains!(tx, "", HtpFlags::FIELD_INVALID);
-}
-
-#[test]
-fn Util() {
-    use crate::{htp_error, htp_log};
-    let mut cfg = TestConfig();
-    cfg.log_level = HtpLogLevel::NONE;
-    let mut t = Test::new(cfg);
-    assert!(t.run_file("50-util.t").is_ok());
-    // Explicitly add a log message to verify it is not logged
-    htp_error!(&mut t.connp.logger, HtpLogCode::UNKNOWN, "Log message");
-    assert_eq!(0, t.connp.conn.get_logs().len());
 }
 
 #[test]
@@ -1624,9 +1609,7 @@ fn ResponseMultipleClMismatch() {
         logs.first().unwrap().msg.msg,
         "Ambiguous response C-L value"
     );
-    assert_eq!(HtpLogLevel::WARNING, logs.first().unwrap().msg.level);
     assert_eq!(logs.get(1).unwrap().msg.msg, "Repetition for header");
-    assert_eq!(HtpLogLevel::WARNING, logs.get(1).unwrap().msg.level);
 }
 
 #[test]
@@ -2352,7 +2335,6 @@ fn HttpStartFromResponse() {
         logs.first().unwrap().msg.msg,
         "Unable to match response to request"
     );
-    assert_eq!(HtpLogLevel::ERROR, logs.first().unwrap().msg.level);
 }
 
 #[test]
