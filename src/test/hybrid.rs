@@ -9,6 +9,7 @@ use crate::{
     uri::Uri,
     HtpStatus,
 };
+use base64::{engine::general_purpose::STANDARD, Engine};
 use std::net::{IpAddr, Ipv4Addr};
 
 use super::common::{assert_header_eq, assert_request_header_eq, assert_response_header_eq};
@@ -107,8 +108,7 @@ fn HybridParsing_Get_Callback_TRANSACTION_COMPLETE(tx: &mut Transaction) -> Resu
 }
 
 fn HybridParsing_Get_Callback_RESPONSE_BODY_DATA(
-    tx: &mut Transaction,
-    d: &ParserData,
+    tx: &mut Transaction, d: &ParserData,
 ) -> Result<()> {
     let user_data = tx.user_data_mut::<HybridParsing_Get_User_Data>().unwrap();
 
@@ -415,7 +415,7 @@ fn CompressedResponse() {
       kwpQrauxh5dFqnyj3uVYgJJCxD5W1g5HSud5Jo3WTQek0mR8UgNlDYZOLcz0ZMuH3y+YKzDAaMDJ\
       SrihOVL32QceVXUy4QAAAA==";
 
-    let body = Bstr::from(base64::decode(RESPONSE).unwrap());
+    let body = Bstr::from(STANDARD.decode(RESPONSE).unwrap());
 
     t.connp.response_body_data(Some(body.as_slice())).unwrap();
 

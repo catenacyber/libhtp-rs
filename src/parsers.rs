@@ -9,6 +9,7 @@ use crate::{
     },
     HtpStatus,
 };
+use base64::{engine::general_purpose::STANDARD, Engine};
 use nom::{
     branch::alt,
     bytes::complete::{is_not, tag, tag_no_case, take_till, take_until, take_while},
@@ -333,7 +334,9 @@ fn parse_authorization_basic(request_tx: &mut Transaction, auth_header: &Header)
         tuple((tag_no_case("basic"), take_ascii_whitespace()))(auth_header.value.as_slice())
             .map_err(|_| HtpStatus::DECLINED)?;
     // Decode base64-encoded data
-    let decoded = base64::decode(remaining_input).map_err(|_| HtpStatus::DECLINED)?;
+    let decoded = STANDARD
+        .decode(remaining_input)
+        .map_err(|_| HtpStatus::DECLINED)?;
     let (password, (username, _)) =
         tuple::<_, _, (&[u8], ErrorKind), _>((take_until(":"), tag(":")))(decoded.as_slice())
             .map_err(|_| HtpStatus::DECLINED)?;
@@ -400,9 +403,7 @@ mod test {
     #[should_panic]
     #[case("username=\"ivanr   ", "", "")]
     fn test_parse_authorization_digest(
-        #[case] input: &str,
-        #[case] username: &str,
-        #[case] remaining: &str,
+        #[case] input: &str, #[case] username: &str, #[case] remaining: &str,
     ) {
         assert_eq!(
             parse_authorization_digest(input.as_bytes()).unwrap(),
@@ -462,9 +463,7 @@ mod test {
         ""
     )]
     fn test_credentials(
-        #[case] input: &str,
-        #[case] username: &str,
-        #[case] password: Option<&str>,
+        #[case] input: &str, #[case] username: &str, #[case] password: Option<&str>,
         #[case] remaining: &str,
     ) {
         assert_eq!(
@@ -573,10 +572,8 @@ mod test {
     #[case("[::1]x", "[::1]", None, false, "x")]
     #[case("[::1", "[::1", None, false, "")]
     fn test_parse_hostport(
-        #[case] input: &str,
-        #[case] hostname: &str,
-        #[case] parsed_port: Option<(&str, Option<u16>)>,
-        #[case] valid: bool,
+        #[case] input: &str, #[case] hostname: &str,
+        #[case] parsed_port: Option<(&str, Option<u16>)>, #[case] valid: bool,
         #[case] remaining: &str,
     ) {
         assert_eq!(
