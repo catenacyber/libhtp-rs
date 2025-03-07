@@ -108,7 +108,8 @@ fn HybridParsing_Get_Callback_TRANSACTION_COMPLETE(tx: &mut Transaction) -> Resu
 }
 
 fn HybridParsing_Get_Callback_RESPONSE_BODY_DATA(
-    tx: &mut Transaction, d: &ParserData,
+    tx: &mut Transaction,
+    d: &ParserData,
 ) -> Result<()> {
     let user_data = tx.user_data_mut::<HybridParsing_Get_User_Data>().unwrap();
 
@@ -165,7 +166,6 @@ fn TestConfig() -> Config {
     let mut cfg = Config::default();
     cfg.set_server_personality(HtpServerPersonality::APACHE_2)
         .unwrap();
-    cfg.set_parse_urlencoded(true);
     cfg
 }
 

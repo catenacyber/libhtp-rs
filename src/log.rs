@@ -202,7 +202,7 @@ impl Logger {
     /// Logs a message to the logger channel.
     pub(crate) fn log(
         &mut self,
-        file: &str,
+        _file: &str,
         _line: u32,
         level: HtpLogLevel,
         code: HtpLogCode,
@@ -210,7 +210,7 @@ impl Logger {
     ) {
         // Ignore messages below our log level.
         if level <= self.level {
-            let _ = self.sender.send(Message::new(file, code, msg));
+            let _ = self.sender.send(Message::new(code, msg));
         }
     }
 }
@@ -223,19 +223,14 @@ pub(crate) struct Message {
     //level: HtpLogLevel,
     /// Message code.
     pub(crate) code: HtpLogCode,
-    /// File in which the code that emitted the message resides.
-    pub(crate) file: String,
+    //pub(crate) file: String,
     //line: u32,
 }
 
 impl Message {
     /// Returns a new Message instance
-    pub(crate) fn new(file: &str, code: HtpLogCode, msg: String) -> Message {
-        Self {
-            file: file.to_string(),
-            code,
-            msg,
-        }
+    pub(crate) fn new(code: HtpLogCode, msg: String) -> Message {
+        Self { code, msg }
     }
 }
 
