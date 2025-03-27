@@ -90,7 +90,7 @@ pub(crate) fn parse_chunked_length(input: &[u8]) -> Result<(Option<u64>, bool)> 
     )
     .map_err(|_| HtpStatus::ERROR)?;
     //TODO: remove this limit and update appropriate tests after differential fuzzing
-    if chunked_len > std::i32::MAX as u64 {
+    if chunked_len > i32::MAX as u64 {
         return Ok((None, false));
     }
     let has_ext = trailing_data.contains(&b';');
