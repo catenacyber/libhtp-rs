@@ -536,10 +536,6 @@ impl ConnectionParser {
         // to process the events that depend on stream closure
         self.request_data(ParserData::default(), timestamp);
         self.response_data(ParserData::default(), timestamp);
-
-        if self.cfg.flush_incomplete {
-            self.flush_incomplete_transactions()
-        }
     }
 
     /// This function is most likely not used and/or not needed.
@@ -692,6 +688,7 @@ impl ConnectionParser {
             }
             req.process_request_headers()?;
             // Run hook REQUEST_HEADERS.
+            #[cfg(test)]
             self.cfg
                 .hook_request_headers
                 .clone()
@@ -725,11 +722,6 @@ impl ConnectionParser {
             return Err(HtpStatus::ERROR);
         }
         req.unwrap().parse_request_line()?;
-        // Run hook REQUEST_URI_NORMALIZE.
-        self.cfg
-            .hook_request_uri_normalize
-            .clone()
-            .run_all(self, self.request_index())?;
         // Run hook REQUEST_LINE.
         self.cfg
             .hook_request_line
@@ -786,8 +778,9 @@ impl ConnectionParser {
     }
 
     /// Determine if the transaction is complete and run any hooks.
-    fn finalize(&mut self, tx_index: usize) -> Result<()> {
-        if let Some(tx) = self.tx(tx_index) {
+    fn finalize(&mut self, _tx_index: usize) -> Result<()> {
+        #[cfg(test)]
+        if let Some(tx) = self.tx(_tx_index) {
             if !tx.is_complete() {
                 return Ok(());
             }
@@ -796,7 +789,7 @@ impl ConnectionParser {
             self.cfg
                 .hook_transaction_complete
                 .clone()
-                .run_all(self, tx_index)?;
+                .run_all(self, _tx_index)?;
         }
         Ok(())
     }
@@ -854,6 +847,7 @@ impl ConnectionParser {
         // Finalize sending raw header data.
         self.response_receiver_finalize_clear(input)?;
         // Run hook RESPONSE_HEADERS.
+        #[cfg(test)]
         self.cfg
             .hook_response_headers
             .clone()
@@ -874,9 +868,13 @@ impl ConnectionParser {
         let tx = tx.unwrap();
 
         tx.validate_response_line();
+        #[cfg(test)]
         let index = tx.index;
         // Run hook HTP_RESPONSE_LINE
-        self.cfg.hook_response_line.clone().run_all(self, index)
+        #[cfg(test)]
+        return self.cfg.hook_response_line.clone().run_all(self, index);
+        #[cfg(not(test))]
+        return Ok(());
     }
 
     /// Change transaction state to COMPLETE and invoke registered callbacks.
@@ -949,31 +947,5 @@ impl ConnectionParser {
     /// Remove the given transaction from the parser
     pub(crate) fn remove_tx(&mut self, tx_id: usize) {
         self.transactions.remove(tx_id);
-    }
-
-    /// For each transaction that is started but not completed, invoke the
-    /// transaction complete callback and remove it from the transactions list.
-    ///
-    /// This function is meant to be used before dropping the ConnectionParser
-    /// so any incomplete transactions can be processed by the caller.
-    ///
-    /// Safety: must only be called after the current transaction is closed
-    fn flush_incomplete_transactions(&mut self) {
-        let mut to_remove = Vec::<usize>::new();
-        for tx in &mut self.transactions {
-            if tx.is_started() && !tx.is_complete() {
-                to_remove.push(tx.index);
-            }
-        }
-        for index in to_remove {
-            self.cfg
-                .hook_transaction_complete
-                .clone()
-                .run_all(self, index)
-                .ok();
-            if self.cfg.tx_auto_destroy {
-                self.transactions.remove(index);
-            }
-        }
     }
 }

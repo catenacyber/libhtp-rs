@@ -107,7 +107,6 @@ impl Transactions {
     /// May cause the previous transaction to be freed if configured to auto-destroy.
     /// Returns the new request transaction index
     pub(crate) fn request_next(&mut self) -> usize {
-        self.check_free(self.request);
         self.request = self.request.wrapping_add(1);
         self.request
     }
@@ -116,21 +115,8 @@ impl Transactions {
     /// May cause the previous transaction to be freed if configured to auto-destroy.
     /// Returns the new response transaction index
     pub(crate) fn response_next(&mut self) -> usize {
-        self.check_free(self.response);
         self.response = self.response.wrapping_add(1);
         self.response
-    }
-
-    /// Check if any old transactions can be freed
-    fn check_free(&mut self, index: usize) {
-        if self.config.tx_auto_destroy {
-            if let Some(tx) = self.transactions.get(&index) {
-                if !tx.is_complete() {
-                    return;
-                }
-            }
-            self.transactions.remove(&index);
-        }
     }
 
     /// Remove the transaction at the given index. If the transaction

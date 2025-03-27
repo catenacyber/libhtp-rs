@@ -16,33 +16,23 @@ pub struct Config {
     /// input chunk does not contain all the necessary data (e.g., a header
     /// line that spans several packets).
     pub(crate) field_limit: usize,
-    /// Whether to delete each transaction after the last hook is invoked. This
-    /// feature should be used when parsing traffic streams in real time.
-    pub(crate) tx_auto_destroy: bool,
     /// Server personality identifier.
     pub(crate) server_personality: HtpServerPersonality,
     /// Decoder configuration for url path.
     pub(crate) decoder_cfg: DecoderConfig,
-    /// Whether to decompress compressed response bodies.
-    pub(crate) response_decompression_enabled: bool,
-    /// Whether to parse urlencoded data.
-    pub(crate) parse_urlencoded: bool,
-    /// Whether to parse HTTP Authentication headers.
-    pub(crate) parse_request_auth: bool,
     /// Request start hook, invoked when the parser receives the first byte of a new
     /// request. Because an HTTP transaction always starts with a request, this hook
     /// doubles as a transaction start hook.
     pub(crate) hook_request_start: TxHook,
     /// Request line hook, invoked after a request line has been parsed.
     pub(crate) hook_request_line: TxHook,
-    /// Request URI normalization hook, for overriding default normalization of URI.
-    pub(crate) hook_request_uri_normalize: TxHook,
     /// Receives raw request header data, starting immediately after the request line,
     /// including all headers as they are seen on the TCP connection, and including the
     /// terminating empty line. Not available on genuine HTTP/0.9 requests (because
     /// they don't use headers).
     pub(crate) hook_request_header_data: DataHook,
     /// Request headers hook, invoked after all request headers are seen.
+    #[cfg(test)]
     pub(crate) hook_request_headers: TxHook,
     /// Request body data hook, invoked every time body data is available. Each
     /// invocation will provide a Data instance. Chunked data
@@ -63,6 +53,7 @@ pub struct Config {
     /// processing started.
     pub(crate) hook_response_start: TxHook,
     /// Response line hook, invoked after a response line has been parsed.
+    #[cfg(test)]
     pub(crate) hook_response_line: TxHook,
     /// Receives raw response header data, starting immediately after the status line
     /// and including all headers as they are seen on the TCP connection, and including the
@@ -70,6 +61,7 @@ pub struct Config {
     /// they don't have response headers).
     pub(crate) hook_response_header_data: DataHook,
     /// Response headers book, invoked after all response headers have been seen.
+    #[cfg(test)]
     pub(crate) hook_response_headers: TxHook,
     /// Response body data hook, invoked every time body data is available. Each
     /// invocation will provide a Data instance. Chunked data
@@ -92,6 +84,7 @@ pub struct Config {
     /// Transaction complete hook, which is invoked once the entire transaction is
     /// considered complete (request and response are both complete). This is always
     /// the last hook to be invoked.
+    #[cfg(test)]
     pub(crate) hook_transaction_complete: TxHook,
     /// Reaction to leading whitespace on the request line
     pub(crate) requestline_leading_whitespace_unwanted: HtpUnwanted,
@@ -99,8 +92,6 @@ pub struct Config {
     pub(crate) request_decompression_enabled: bool,
     /// Configuration options for decompression.
     pub(crate) compression_options: Options,
-    /// Flush incomplete transactions
-    pub(crate) flush_incomplete: bool,
     /// Maximum number of transactions
     pub(crate) max_tx: u32,
     /// Maximum number of headers
@@ -111,34 +102,32 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             field_limit: 18000,
-            tx_auto_destroy: false,
             server_personality: HtpServerPersonality::MINIMAL,
             decoder_cfg: Default::default(),
-            response_decompression_enabled: true,
-            parse_urlencoded: false,
-            parse_request_auth: true,
             hook_request_start: TxHook::default(),
             hook_request_line: TxHook::default(),
-            hook_request_uri_normalize: TxHook::default(),
             hook_request_header_data: DataHook::default(),
+            #[cfg(test)]
             hook_request_headers: TxHook::default(),
             hook_request_body_data: DataHook::default(),
             hook_request_trailer_data: DataHook::default(),
             hook_request_trailer: TxHook::default(),
             hook_request_complete: TxHook::default(),
             hook_response_start: TxHook::default(),
+            #[cfg(test)]
             hook_response_line: TxHook::default(),
             hook_response_header_data: DataHook::default(),
+            #[cfg(test)]
             hook_response_headers: TxHook::default(),
             hook_response_body_data: DataHook::default(),
             hook_response_trailer_data: DataHook::default(),
             hook_response_trailer: TxHook::default(),
             hook_response_complete: TxHook::default(),
+            #[cfg(test)]
             hook_transaction_complete: TxHook::default(),
             requestline_leading_whitespace_unwanted: HtpUnwanted::Ignore,
             request_decompression_enabled: false,
             compression_options: Options::default(),
-            flush_incomplete: false,
             max_tx: 512,
             number_headers_limit: 1024,
         }

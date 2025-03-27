@@ -10,7 +10,6 @@ use crate::{
     parsers::{parse_authorization, parse_content_length, parse_content_type, parse_hostport},
     request::HtpMethod,
     uri::Uri,
-    urlencoded::Parser as UrlEncodedParser,
     util::{validate_hostname, FlagOperations, HtpFlags},
     HtpStatus,
 };
@@ -833,17 +832,15 @@ impl Transaction {
             self.request_content_type = Some(parse_content_type(ct.value.as_slice())?);
         }
         // Parse authentication information.
-        if self.cfg.parse_request_auth {
-            parse_authorization(self).or_else(|rc| {
-                if rc == HtpStatus::DECLINED {
-                    // Don't fail the stream if an authorization header is invalid, just set a flag.
-                    self.flags.set(HtpFlags::AUTH_INVALID);
-                    Ok(())
-                } else {
-                    Err(rc)
-                }
-            })?;
-        }
+        parse_authorization(self).or_else(|rc| {
+            if rc == HtpStatus::DECLINED {
+                // Don't fail the stream if an authorization header is invalid, just set a flag.
+                self.flags.set(HtpFlags::AUTH_INVALID);
+                Ok(())
+            } else {
+                Err(rc)
+            }
+        })?;
         Ok(())
     }
 
@@ -889,17 +886,6 @@ impl Transaction {
             // Keep the original URI components, but create a copy which we can normalize and use internally.
             self.normalize_parsed_uri();
         }
-        if self.cfg.parse_urlencoded {
-            if let Some(query) = self
-                .parsed_uri
-                .as_ref()
-                .and_then(|parsed_uri| parsed_uri.query.clone())
-            {
-                // We have a non-zero length query string.
-                let mut urlenp = UrlEncodedParser::new(self.cfg.decoder_cfg);
-                urlenp.parse_complete(query.as_slice());
-            }
-        }
 
         // Check parsed_uri hostname.
         if let Some(hostname) = self.get_parsed_uri_hostname() {
@@ -910,6 +896,7 @@ impl Transaction {
         Ok(())
     }
 
+    #[cfg(test)]
     /// Determines if both request and response are complete.
     pub(crate) fn is_complete(&self) -> bool {
         // A transaction is considered complete only when both the request and

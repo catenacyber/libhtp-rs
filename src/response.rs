@@ -1121,7 +1121,6 @@ impl ConnectionParser {
     ///    forces decompression by setting response_content_encoding to one of the
     ///    supported algorithms.
     pub(crate) fn response_initialize_decompressors(&mut self) -> Result<()> {
-        let response_decompression_enabled = self.cfg.response_decompression_enabled;
         let resp = self.response_mut();
         if resp.is_none() {
             return Err(HtpStatus::ERROR);
@@ -1160,12 +1159,7 @@ impl ConnectionParser {
         };
 
         // Configure decompression, if enabled in the configuration.
-        resp.response_content_encoding_processing = if response_decompression_enabled {
-            resp.response_content_encoding
-        } else {
-            slow_path = false;
-            HtpContentEncoding::None
-        };
+        resp.response_content_encoding_processing = resp.response_content_encoding;
 
         let response_content_encoding_processing = resp.response_content_encoding_processing;
         let compression_options = self.cfg.compression_options;

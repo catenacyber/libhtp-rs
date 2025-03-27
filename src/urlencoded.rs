@@ -2,159 +2,19 @@ use crate::{
     bstr::Bstr,
     config::{DecoderConfig, HtpUnwanted, HtpUrlEncodingHandling},
     error::Result,
-    table::Table,
     util::{FlagOperations, HtpFlags},
 };
 
 use nom::{
     branch::alt,
-    bytes::complete::{tag_no_case, take, take_till, take_while_m_n},
+    bytes::complete::{tag_no_case, take, take_while_m_n},
     character::complete::char,
-    combinator::{map, not, opt, peek},
+    combinator::{map, not},
     multi::fold_many0,
     number::complete::be_u8,
     sequence::tuple,
     IResult,
 };
-
-/// This is the main URLENCODED parser structure. It is used to store
-/// parser configuration, temporary parsing data, as well as the parameters.
-#[derive(Clone)]
-pub(crate) struct Parser {
-    /// The configuration structure associated with this parser
-    pub(crate) cfg: DecoderConfig,
-    /// The character used to separate parameters. Defaults to & and should
-    /// not be changed without good reason.
-    pub(crate) argument_separator: u8,
-    /// Whether to perform URL-decoding on parameters. Defaults to true.
-    pub(crate) decode_url_encoding: bool,
-    /// This table contains the list of parameters, indexed by name.
-    pub(crate) params: Table<Bstr>,
-    /// Contains parsing flags
-    pub(crate) flags: u64,
-    /// This field is set if the parser thinks that the
-    /// backend server will reject a request with a particular status code.
-    pub(crate) response_status_expected_number: HtpUnwanted,
-    // Private fields; these are used during the parsing process only
-    complete: bool,
-    saw_data: bool,
-    field: Bstr,
-}
-
-impl Parser {
-    /// Construct new Parser with provided decoder configuration
-    pub(crate) fn new(cfg: DecoderConfig) -> Self {
-        Self {
-            cfg,
-            argument_separator: b'&',
-            decode_url_encoding: true,
-            params: Table::with_capacity(32),
-            flags: 0,
-            response_status_expected_number: HtpUnwanted::Ignore,
-            complete: false,
-            saw_data: false,
-            field: Bstr::with_capacity(64),
-        }
-    }
-
-    /// Finalizes parsing, forcing the parser to convert any outstanding
-    /// data into parameters. This method should be invoked at the end
-    /// of a parsing operation that used urlenp_parse_partial().
-    pub(crate) fn finalize(&mut self) {
-        self.complete = true;
-        self.parse_partial(b"")
-    }
-
-    /// Parses the provided data chunk under the assumption
-    /// that it contains all the data that will be parsed. When this
-    /// method is used for parsing the finalization method should not
-    /// be invoked.
-    pub(crate) fn parse_complete(&mut self, data: &[u8]) {
-        self.parse_partial(data);
-        self.finalize()
-    }
-
-    /// Parses the provided data chunk, searching for argument seperators and '=' to locate names and values,
-    /// keeping state to allow streaming parsing, i.e., the parsing where only partial information is available
-    /// at any one time. The method urlenp_finalize() must be invoked at the end to finalize parsing.
-    pub(crate) fn parse_partial(&mut self, data: &[u8]) {
-        self.field.add(data);
-        let input = self.field.clone();
-        let mut input = input.as_slice();
-        if input.is_empty() {
-            if self.complete && self.params.size() == 0 && self.saw_data {
-                self.params.add(Bstr::new(), Bstr::new());
-            }
-            return;
-        }
-        let mut remaining: &[u8] = b"";
-        let sep = self.argument_separator;
-        self.saw_data = true;
-        if !self.complete {
-            let data: Vec<&[u8]> = input.rsplitn(2, |c| *c == sep).collect();
-            if data.len() == 2 {
-                input = data[1];
-                remaining = data[0];
-            } else {
-                return;
-            }
-        }
-        input.split(|c| *c == sep).for_each(|segment| {
-            if let Ok((value, name)) = name_value(segment) {
-                let mut name = Bstr::from(name);
-                let mut value = Bstr::from(value);
-                if self.decode_url_encoding {
-                    if let Ok((_, (consumed, flags, expected_status))) =
-                        decode_uri(name.as_slice(), &self.cfg)
-                    {
-                        self.flags.set(flags);
-                        self.response_status_expected_number = expected_status;
-                        name.clear();
-                        name.add(consumed);
-                    }
-                    if let Ok((_, (consumed, flags, expected_status))) =
-                        decode_uri(value.as_slice(), &self.cfg)
-                    {
-                        self.flags.set(flags);
-                        self.response_status_expected_number = expected_status;
-                        value.clear();
-                        value.add(consumed);
-                    }
-                }
-                self.params.add(name, value);
-            }
-        });
-        self.field.clear();
-        self.field.add(remaining);
-    }
-}
-
-impl Default for Parser {
-    /// Construct a new Parser with default values
-    fn default() -> Self {
-        Self {
-            cfg: DecoderConfig::default(),
-            argument_separator: b'&',
-            decode_url_encoding: true,
-            params: Table::with_capacity(32),
-            flags: 0,
-            response_status_expected_number: HtpUnwanted::Ignore,
-            complete: false,
-            saw_data: false,
-            field: Bstr::with_capacity(64),
-        }
-    }
-}
-
-/// Extracts names and values from the url parameters
-///
-/// Returns a name value pair, separated by an '='
-fn name_value(input: &[u8]) -> IResult<&[u8], &[u8]> {
-    map(
-        tuple((peek(take(1usize)), take_till(|c| c == b'='), opt(char('=')))),
-        |(_, name, _)| name,
-    )(input)
-}
 
 /// Convert two input bytes, pointed to by the pointer parameter,
 /// into a single byte by assuming the input consists of hexadecimal
@@ -920,65 +780,6 @@ mod test {
     use super::*;
     use crate::config::Config;
     use rstest::rstest;
-
-    #[rstest]
-    #[case::empty("", &[])]
-    #[case::empty_key_value("&", &[("", "")])]
-    #[case::empty_key_value("=&", &[("", "")])]
-    #[case::empty_key_value("&=", &[("", "")])]
-    #[case::empty_key_value("&&", &[("", "")])]
-    #[case::empty_key_value("=", &[("", "")])]
-    #[case::empty_key("=1&", &[("", "1")])]
-    #[case::empty_key("=p", &[("", "p")])]
-    #[case::empty_value("p", &[("p", "")])]
-    #[case::empty_value("p=", &[("p", "")])]
-    #[case::empty_value("p&", &[("p", "")])]
-    #[case::pair("p=1", &[("p", "1")])]
-    #[case::two_pair("p=1&q=2", &[("p", "1"), ("q", "2")])]
-    #[case::two_keys("p&q", &[("p", ""), ("q", "")])]
-    #[case::two_keys_one_value("p&q=2", &[("p", ""), ("q", "2")])]
-    fn test_parse_complete(#[case] input: &str, #[case] expected: &[(&str, &str)]) {
-        let mut urlenp = Parser::default();
-        urlenp.parse_complete(input.as_bytes());
-        for (key, value) in expected {
-            assert!(urlenp.params.get_nocase(key).unwrap().1.eq_slice(value));
-        }
-        assert_eq!(
-            expected.len(),
-            urlenp.params.size(),
-            "Test case expected {} params. parse_complete resulted in {} params.",
-            expected.len(),
-            urlenp.params.size()
-        );
-    }
-
-    #[rstest]
-    #[case::empty_value(&["p"], &[("p", "")])]
-    #[case::empty_value(&["p", "x"], &[("px", "")])]
-    #[case::empty_value(&["p", "x&"], &[("px", "")])]
-    #[case::empty_value(&["p", "="], &[("p", "")])]
-    #[case::empty_value(&["p", "", "", ""], &[("p", "")])]
-    #[case::two_pairs(
-            &["px", "n", "", "=", "1", "2", "&", "qz", "n", "", "=", "2", "3", "&"],
-            &[("pxn", "12"), ("qzn", "23")]
-        )]
-    fn test_parse_partial(#[case] input: &[&str], #[case] expected: &[(&str, &str)]) {
-        let mut urlenp = Parser::default();
-        for i in input {
-            urlenp.parse_partial(i.as_bytes());
-        }
-        urlenp.finalize();
-        for (key, value) in expected {
-            assert!(urlenp.params.get_nocase(key).unwrap().1.eq_slice(value));
-        }
-        assert_eq!(
-            expected.len(),
-            urlenp.params.size(),
-            "Test case expected {} params. parse_complete resulted in {} params.",
-            expected.len(),
-            urlenp.params.size()
-        );
-    }
 
     #[rstest]
     #[case("/dest", "/dest", "/dest", "/dest")]

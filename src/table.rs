@@ -45,6 +45,7 @@ impl<T> IntoIterator for Table<T> {
 }
 
 impl<T> Table<T> {
+    #[cfg(test)]
     /// Make a new owned Table with given capacity
     pub(crate) fn with_capacity(size: usize) -> Self {
         Self {
@@ -52,6 +53,7 @@ impl<T> Table<T> {
         }
     }
 
+    #[cfg(test)]
     /// Add a new tuple (key, item) to the table
     pub(crate) fn add(&mut self, key: Bstr, item: T) {
         self.elements.push((key, item));
@@ -85,6 +87,7 @@ impl<T> Table<T> {
             .find(|x| x.0.cmp_nocase_trimmed(key.as_ref()) == Ordering::Equal)
     }
 
+    #[cfg(test)]
     /// Returns the number of elements in the table
     pub(crate) fn size(&self) -> usize {
         self.elements.len()
