@@ -475,7 +475,6 @@ fn path_decode_control(mut byte: u8, cfg: &DecoderConfig) -> (u8, HtpUnwanted) {
 /// code will be set.
 ///
 /// Returns decoded bytes, flags set during decoding, and corresponding status code
-
 fn path_decode_uri<'a>(
     input: &'a [u8],
     cfg: &DecoderConfig,
