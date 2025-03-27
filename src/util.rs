@@ -145,6 +145,7 @@ impl HtpFlags {
     pub const HEADERS_TOO_MANY: u64 = 0x0040_0000_0000;
 }
 
+#[allow(clippy::upper_case_acronyms)]
 /// Enumerates possible EOLs
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub(crate) enum Eol {
