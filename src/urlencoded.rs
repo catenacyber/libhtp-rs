@@ -228,12 +228,19 @@ fn decode_u_encoding_params<'a>(i: &'a [u8], cfg: &DecoderConfig) -> IResult<&'a
     Ok((i, (cfg.bestfit_map.get(bestfit_key!(c1, c2)), flags)))
 }
 
+struct UrlParseResult {
+    byte: u8,
+    expected_status_code: HtpUnwanted,
+    flags: u64,
+    decode: bool,
+}
+
 /// Decodes path valid uencoded params according to the given cfg settings.
 ///
 /// Returns decoded byte, corresponding status code, appropriate flags and whether the byte should be output.
 fn path_decode_valid_u_encoding(
     cfg: &DecoderConfig,
-) -> impl Fn(&[u8]) -> IResult<&[u8], (u8, HtpUnwanted, u64, bool)> + '_ {
+) -> impl Fn(&[u8]) -> IResult<&[u8], UrlParseResult> + '_ {
     move |remaining_input| {
         let (left, _) = tag_no_case("u")(remaining_input)?;
         let mut output = remaining_input;
@@ -258,7 +265,15 @@ fn path_decode_valid_u_encoding(
                 }
                 if cfg.nul_encoded_terminates {
                     // Terminate the path at the raw NUL byte.
-                    return Ok((b"", (byte, expected_status_code, flags, false)));
+                    return Ok((
+                        b"",
+                        UrlParseResult {
+                            byte,
+                            expected_status_code,
+                            flags,
+                            decode: false,
+                        },
+                    ));
                 }
             }
         }
@@ -266,7 +281,15 @@ fn path_decode_valid_u_encoding(
         if code != HtpUnwanted::Ignore {
             expected_status_code = code;
         }
-        Ok((output, (byte, expected_status_code, flags, true)))
+        Ok((
+            output,
+            UrlParseResult {
+                byte,
+                expected_status_code,
+                flags,
+                decode: true,
+            },
+        ))
     }
 }
 
@@ -275,7 +298,7 @@ fn path_decode_valid_u_encoding(
 /// Returns decoded byte, corresponding status code, appropriate flags and whether the byte should be output.
 fn path_decode_invalid_u_encoding(
     cfg: &DecoderConfig,
-) -> impl Fn(&[u8]) -> IResult<&[u8], (u8, HtpUnwanted, u64, bool)> + '_ {
+) -> impl Fn(&[u8]) -> IResult<&[u8], UrlParseResult> + '_ {
     move |remaining_input| {
         let mut output = remaining_input;
         let mut byte = b'%';
@@ -289,7 +312,15 @@ fn path_decode_invalid_u_encoding(
             expected_status_code = cfg.url_encoding_invalid_unwanted;
             if cfg.url_encoding_invalid_handling == HtpUrlEncodingHandling::REMOVE_PERCENT {
                 // Do not place anything in output; consume the %.
-                return Ok((remaining_input, (byte, expected_status_code, flags, false)));
+                return Ok((
+                    remaining_input,
+                    UrlParseResult {
+                        byte,
+                        expected_status_code,
+                        flags,
+                        decode: false,
+                    },
+                ));
             } else if cfg.url_encoding_invalid_handling == HtpUrlEncodingHandling::PROCESS_INVALID {
                 let (_, (b, f, c)) = path_decode_u_encoding(hex, cfg)?;
                 if c != HtpUnwanted::Ignore {
@@ -304,7 +335,15 @@ fn path_decode_invalid_u_encoding(
         if code != HtpUnwanted::Ignore {
             expected_status_code = code;
         }
-        Ok((output, (byte, expected_status_code, flags, true)))
+        Ok((
+            output,
+            UrlParseResult {
+                byte,
+                expected_status_code,
+                flags,
+                decode: true,
+            },
+        ))
     }
 }
 
@@ -313,7 +352,7 @@ fn path_decode_invalid_u_encoding(
 /// Returns decoded byte, corresponding status code, appropriate flags and whether the byte should be output.
 fn path_decode_valid_hex(
     cfg: &DecoderConfig,
-) -> impl Fn(&[u8]) -> IResult<&[u8], (u8, HtpUnwanted, u64, bool)> + '_ {
+) -> impl Fn(&[u8]) -> IResult<&[u8], UrlParseResult> + '_ {
     move |remaining_input| {
         let original_remaining = remaining_input;
         // Valid encoding (2 xbytes)
@@ -326,7 +365,15 @@ fn path_decode_valid_hex(
             flags.set(HtpFlags::PATH_ENCODED_NUL);
             if cfg.nul_encoded_terminates {
                 // Terminate the path at the raw NUL byte.
-                return Ok((b"", (byte, cfg.nul_encoded_unwanted, flags, false)));
+                return Ok((
+                    b"",
+                    UrlParseResult {
+                        byte,
+                        expected_status_code: cfg.nul_encoded_unwanted,
+                        flags,
+                        decode: false,
+                    },
+                ));
             }
         }
         if byte == b'/' || (cfg.backslash_convert_slashes && byte == b'\\') {
@@ -338,7 +385,15 @@ fn path_decode_valid_hex(
             }
         }
         let (byte, expected_status_code) = path_decode_control(byte, cfg);
-        Ok((left, (byte, expected_status_code, flags, true)))
+        Ok((
+            left,
+            UrlParseResult {
+                byte,
+                expected_status_code,
+                flags,
+                decode: true,
+            },
+        ))
     }
 }
 
@@ -347,7 +402,7 @@ fn path_decode_valid_hex(
 /// Returns decoded byte, corresponding status code, appropriate flags and whether the byte should be output.
 fn path_decode_invalid_hex(
     cfg: &DecoderConfig,
-) -> impl Fn(&[u8]) -> IResult<&[u8], (u8, HtpUnwanted, u64, bool)> + '_ {
+) -> impl Fn(&[u8]) -> IResult<&[u8], UrlParseResult> + '_ {
     move |remaining_input| {
         let mut remaining = remaining_input;
         // Valid encoding (2 xbytes)
@@ -359,7 +414,15 @@ fn path_decode_invalid_hex(
         let expected_status_code = cfg.url_encoding_invalid_unwanted;
         if cfg.url_encoding_invalid_handling == HtpUrlEncodingHandling::REMOVE_PERCENT {
             // Do not place anything in output; consume the %.
-            return Ok((remaining_input, (byte, expected_status_code, flags, false)));
+            return Ok((
+                remaining_input,
+                UrlParseResult {
+                    byte,
+                    expected_status_code,
+                    flags,
+                    decode: false,
+                },
+            ));
         } else if cfg.url_encoding_invalid_handling == HtpUrlEncodingHandling::PROCESS_INVALID {
             // Decode
             let (_, b) = x2c(hex)?;
@@ -367,7 +430,15 @@ fn path_decode_invalid_hex(
             byte = b;
         }
         let (byte, expected_status_code) = path_decode_control(byte, cfg);
-        Ok((remaining, (byte, expected_status_code, flags, true)))
+        Ok((
+            remaining,
+            UrlParseResult {
+                byte,
+                expected_status_code,
+                flags,
+                decode: true,
+            },
+        ))
     }
 }
 
@@ -379,7 +450,7 @@ fn path_decode_invalid_hex(
 /// Returns decoded byte, corresponding status code, appropriate flags and whether the byte should be output.
 fn path_decode_percent(
     cfg: &DecoderConfig,
-) -> impl Fn(&[u8]) -> IResult<&[u8], (u8, HtpUnwanted, u64, bool)> + '_ {
+) -> impl Fn(&[u8]) -> IResult<&[u8], UrlParseResult> + '_ {
     move |i| {
         map(
             tuple((
@@ -392,13 +463,13 @@ fn path_decode_percent(
                         // Incomplete invalid %u encoding
                         Ok((
                             remaining_input,
-                            (
-                                b'%',
-                                cfg.url_encoding_invalid_unwanted,
-                                HtpFlags::PATH_INVALID_ENCODING,
-                                cfg.url_encoding_invalid_handling
+                            UrlParseResult {
+                                byte: b'%',
+                                expected_status_code: cfg.url_encoding_invalid_unwanted,
+                                flags: HtpFlags::PATH_INVALID_ENCODING,
+                                decode: cfg.url_encoding_invalid_handling
                                     != HtpUrlEncodingHandling::REMOVE_PERCENT,
-                            ),
+                            },
                         ))
                     },
                     path_decode_valid_hex(cfg),
@@ -407,13 +478,13 @@ fn path_decode_percent(
                         // Invalid URL encoding (not even 2 bytes of data)
                         Ok((
                             remaining_input,
-                            (
-                                b'%',
-                                cfg.url_encoding_invalid_unwanted,
-                                HtpFlags::PATH_INVALID_ENCODING,
-                                cfg.url_encoding_invalid_handling
+                            UrlParseResult {
+                                byte: b'%',
+                                expected_status_code: cfg.url_encoding_invalid_unwanted,
+                                flags: HtpFlags::PATH_INVALID_ENCODING,
+                                decode: cfg.url_encoding_invalid_handling
                                     != HtpUrlEncodingHandling::REMOVE_PERCENT,
-                            ),
+                            },
                         ))
                     },
                 )),
@@ -427,19 +498,33 @@ fn path_decode_percent(
 /// according to the decoder configurations settings.
 ///
 /// Returns parsed byte, corresponding status code, appropriate flags and whether the byte should be output.
-fn path_parse_other(
-    cfg: &DecoderConfig,
-) -> impl Fn(&[u8]) -> IResult<&[u8], (u8, HtpUnwanted, u64, bool)> + '_ {
+fn path_parse_other(cfg: &DecoderConfig) -> impl Fn(&[u8]) -> IResult<&[u8], UrlParseResult> + '_ {
     move |i| {
         let (remaining_input, byte) = be_u8(i)?;
         // One non-encoded byte.
         // Did we get a raw NUL byte?
         if byte == 0 && cfg.nul_raw_terminates {
             // Terminate the path at the encoded NUL byte.
-            return Ok((b"", (byte, cfg.nul_raw_unwanted, 0, false)));
+            return Ok((
+                b"",
+                UrlParseResult {
+                    byte,
+                    expected_status_code: cfg.nul_raw_unwanted,
+                    flags: 0,
+                    decode: false,
+                },
+            ));
         }
         let (byte, expected_status_code) = path_decode_control(byte, cfg);
-        Ok((remaining_input, (byte, expected_status_code, 0, true)))
+        Ok((
+            remaining_input,
+            UrlParseResult {
+                byte,
+                expected_status_code,
+                flags: 0,
+                decode: true,
+            },
+        ))
     }
 }
 /// Checks for control characters and converts them according to the cfg settings
@@ -482,24 +567,25 @@ fn path_decode_uri<'a>(
     fold_many0(
         alt((path_decode_percent(cfg), path_parse_other(cfg))),
         || (Vec::new(), 0, HtpUnwanted::Ignore),
-        |mut acc: (Vec<_>, u64, HtpUnwanted), (byte, code, flag, insert)| {
+        |mut acc: (Vec<_>, u64, HtpUnwanted), upr| {
             // If we're compressing separators then we need
             // to check if the previous character was a separator
-            if insert {
-                if byte == b'/' && cfg.path_separators_compress {
+            if upr.decode {
+                // insert
+                if upr.byte == b'/' && cfg.path_separators_compress {
                     if !acc.0.is_empty() {
                         if acc.0[acc.0.len() - 1] != b'/' {
-                            acc.0.push(byte);
+                            acc.0.push(upr.byte);
                         }
                     } else {
-                        acc.0.push(byte);
+                        acc.0.push(upr.byte);
                     }
                 } else {
-                    acc.0.push(byte);
+                    acc.0.push(upr.byte);
                 }
             }
-            acc.1.set(flag);
-            acc.2 = code;
+            acc.1.set(upr.flags);
+            acc.2 = upr.expected_status_code;
             acc
         },
     )(input)
@@ -536,13 +622,13 @@ fn decode_uri<'a>(
     fold_many0(
         alt((decode_percent(cfg), decode_plus(cfg), unencoded_byte(cfg))),
         || (Vec::new(), 0, HtpUnwanted::Ignore),
-        |mut acc: (Vec<_>, u64, HtpUnwanted), (byte, code, flag, insert)| {
-            if insert {
-                acc.0.push(byte);
+        |mut acc: (Vec<_>, u64, HtpUnwanted), upr| {
+            if upr.decode {
+                acc.0.push(upr.byte);
             }
-            acc.1.set(flag);
-            if code != HtpUnwanted::Ignore {
-                acc.2 = code;
+            acc.1.set(upr.flags);
+            if upr.expected_status_code != HtpUnwanted::Ignore {
+                acc.2 = upr.expected_status_code;
             }
             acc
         },
@@ -585,15 +671,31 @@ pub(crate) fn decode_uri_inplace(cfg: &DecoderConfig, input: &mut Bstr) -> Resul
 /// Returns decoded byte, corresponding status code, appropriate flags and whether the byte should be output.
 fn decode_valid_u_encoding(
     cfg: &DecoderConfig,
-) -> impl Fn(&[u8]) -> IResult<&[u8], (u8, HtpUnwanted, u64, bool)> + '_ {
+) -> impl Fn(&[u8]) -> IResult<&[u8], UrlParseResult> + '_ {
     move |input| {
         let (left, _) = alt((char('u'), char('U')))(input)?;
         if cfg.u_encoding_decode {
             let (input, hex) = take_while_m_n(4, 4, |c: u8| c.is_ascii_hexdigit())(left)?;
             let (_, (byte, flags)) = decode_u_encoding_params(hex, cfg)?;
-            return Ok((input, (byte, cfg.u_encoding_unwanted, flags, true)));
+            return Ok((
+                input,
+                UrlParseResult {
+                    byte,
+                    expected_status_code: cfg.u_encoding_unwanted,
+                    flags,
+                    decode: true,
+                },
+            ));
         }
-        Ok((input, (b'%', HtpUnwanted::Ignore, 0, true)))
+        Ok((
+            input,
+            UrlParseResult {
+                byte: b'%',
+                expected_status_code: HtpUnwanted::Ignore,
+                flags: 0,
+                decode: true,
+            },
+        ))
     }
 }
 
@@ -603,7 +705,7 @@ fn decode_valid_u_encoding(
 /// Returns decoded byte, corresponding status code, appropriate flags and whether the byte should be output.
 fn decode_invalid_u_encoding(
     cfg: &DecoderConfig,
-) -> impl Fn(&[u8]) -> IResult<&[u8], (u8, HtpUnwanted, u64, bool)> + '_ {
+) -> impl Fn(&[u8]) -> IResult<&[u8], UrlParseResult> + '_ {
     move |mut input| {
         let (left, _) = alt((char('u'), char('U')))(input)?;
         let mut byte = b'%';
@@ -629,7 +731,15 @@ fn decode_invalid_u_encoding(
                 input = left;
             }
         }
-        Ok((input, (byte, code, flags, insert)))
+        Ok((
+            input,
+            UrlParseResult {
+                byte,
+                expected_status_code: code,
+                flags,
+                decode: insert,
+            },
+        ))
     }
 }
 
@@ -637,13 +747,21 @@ fn decode_invalid_u_encoding(
 ///  e.g. "2f" -> "/"
 ///
 /// Returns decoded byte, corresponding status code, appropriate flags and whether the byte should be output.
-fn decode_valid_hex() -> impl Fn(&[u8]) -> IResult<&[u8], (u8, HtpUnwanted, u64, bool)> {
+fn decode_valid_hex() -> impl Fn(&[u8]) -> IResult<&[u8], UrlParseResult> {
     move |input| {
         // Valid encoding (2 xbytes)
         not(alt((char('u'), char('U'))))(input)?;
         let (input, hex) = take_while_m_n(2, 2, |c: u8| c.is_ascii_hexdigit())(input)?;
         let (_, byte) = x2c(hex)?;
-        Ok((input, (byte, HtpUnwanted::Ignore, 0, true)))
+        Ok((
+            input,
+            UrlParseResult {
+                byte,
+                expected_status_code: HtpUnwanted::Ignore,
+                flags: 0,
+                decode: true,
+            },
+        ))
     }
 }
 
@@ -653,7 +771,7 @@ fn decode_valid_hex() -> impl Fn(&[u8]) -> IResult<&[u8], (u8, HtpUnwanted, u64,
 /// Returns decoded byte, corresponding status code, appropriate flags and whether the byte should be output.
 fn decode_invalid_hex(
     cfg: &DecoderConfig,
-) -> impl Fn(&[u8]) -> IResult<&[u8], (u8, HtpUnwanted, u64, bool)> + '_ {
+) -> impl Fn(&[u8]) -> IResult<&[u8], UrlParseResult> + '_ {
     move |mut input| {
         not(alt((char('u'), char('U'))))(input)?;
         // Invalid encoding (2 bytes, but not hexadecimal digits).
@@ -669,12 +787,12 @@ fn decode_invalid_hex(
         }
         Ok((
             input,
-            (
+            UrlParseResult {
                 byte,
-                cfg.url_encoding_invalid_unwanted,
-                HtpFlags::URLEN_INVALID_ENCODING,
-                insert,
-            ),
+                expected_status_code: cfg.url_encoding_invalid_unwanted,
+                flags: HtpFlags::URLEN_INVALID_ENCODING,
+                decode: insert,
+            },
         ))
     }
 }
@@ -685,12 +803,10 @@ fn decode_invalid_hex(
 /// code will be set.
 ///
 /// Returns decoded byte, corresponding status code, appropriate flags and whether the byte should be output.
-fn decode_percent(
-    cfg: &DecoderConfig,
-) -> impl Fn(&[u8]) -> IResult<&[u8], (u8, HtpUnwanted, u64, bool)> + '_ {
+fn decode_percent(cfg: &DecoderConfig) -> impl Fn(&[u8]) -> IResult<&[u8], UrlParseResult> + '_ {
     move |i| {
         let (input, _) = char('%')(i)?;
-        let (input, (byte, mut expected_status_code, mut flags, insert)) = alt((
+        let (input, upr) = alt((
             decode_valid_u_encoding(cfg),
             decode_invalid_u_encoding(cfg),
             decode_valid_hex(),
@@ -700,37 +816,52 @@ fn decode_percent(
                 // Do not place anything in output if REMOVE_PERCENT; consume the %.
                 Ok((
                     input,
-                    (
-                        b'%',
-                        cfg.url_encoding_invalid_unwanted,
-                        HtpFlags::URLEN_INVALID_ENCODING,
-                        !(cfg.url_encoding_invalid_handling
+                    UrlParseResult {
+                        byte: b'%',
+                        expected_status_code: cfg.url_encoding_invalid_unwanted,
+                        flags: HtpFlags::URLEN_INVALID_ENCODING,
+                        decode: !(cfg.url_encoding_invalid_handling
                             == HtpUrlEncodingHandling::REMOVE_PERCENT),
-                    ),
+                    },
                 ))
             },
         ))(input)?;
         //Did we get an encoded NUL byte?
-        if byte == 0 {
-            flags.set(HtpFlags::URLEN_ENCODED_NUL);
+        if upr.byte == 0 {
+            let flags = upr.flags | HtpFlags::URLEN_ENCODED_NUL;
+            let mut expected_status_code = upr.expected_status_code;
             if cfg.nul_encoded_unwanted != HtpUnwanted::Ignore {
                 expected_status_code = cfg.nul_encoded_unwanted
             }
             if cfg.nul_encoded_terminates {
                 // Terminate the path at the encoded NUL byte.
-                return Ok((b"", (byte, expected_status_code, flags, false)));
+                return Ok((
+                    b"",
+                    UrlParseResult {
+                        byte: upr.byte,
+                        expected_status_code,
+                        flags,
+                        decode: false,
+                    },
+                ));
             }
         }
-        Ok((input, (byte, expected_status_code, flags, insert)))
+        Ok((
+            input,
+            UrlParseResult {
+                byte: upr.byte,
+                expected_status_code: upr.expected_status_code,
+                flags: upr.flags,
+                decode: upr.decode,
+            },
+        ))
     }
 }
 
 /// Consumes the next nullbyte if it is a '+', decoding it according to the cfg
 ///
 /// Returns decoded byte, corresponding status code, appropriate flags and whether the byte should be output.
-fn decode_plus(
-    cfg: &DecoderConfig,
-) -> impl Fn(&[u8]) -> IResult<&[u8], (u8, HtpUnwanted, u64, bool)> + '_ {
+fn decode_plus(cfg: &DecoderConfig) -> impl Fn(&[u8]) -> IResult<&[u8], UrlParseResult> + '_ {
     move |input| {
         let (input, byte) = map(char('+'), |byte| {
             // Decoding of the plus character is conditional on the configuration.
@@ -740,7 +871,15 @@ fn decode_plus(
                 byte as u8
             }
         })(input)?;
-        Ok((input, (byte, HtpUnwanted::Ignore, 0, true)))
+        Ok((
+            input,
+            UrlParseResult {
+                byte,
+                expected_status_code: HtpUnwanted::Ignore,
+                flags: 0,
+                decode: true,
+            },
+        ))
     }
 }
 
@@ -748,9 +887,7 @@ fn decode_plus(
 /// Handles raw null bytes according to the input cfg settings.
 ///
 /// Returns decoded byte, corresponding status code, appropriate flags and whether the byte should be output.
-fn unencoded_byte(
-    cfg: &DecoderConfig,
-) -> impl Fn(&[u8]) -> IResult<&[u8], (u8, HtpUnwanted, u64, bool)> + '_ {
+fn unencoded_byte(cfg: &DecoderConfig) -> impl Fn(&[u8]) -> IResult<&[u8], UrlParseResult> + '_ {
     move |input| {
         let (input, byte) = be_u8(input)?;
         // One non-encoded byte.
@@ -758,15 +895,23 @@ fn unencoded_byte(
         if byte == 0 {
             return Ok((
                 if cfg.nul_raw_terminates { b"" } else { input },
-                (
+                UrlParseResult {
                     byte,
-                    cfg.nul_raw_unwanted,
-                    HtpFlags::URLEN_RAW_NUL,
-                    !cfg.nul_raw_terminates,
-                ),
+                    expected_status_code: cfg.nul_raw_unwanted,
+                    flags: HtpFlags::URLEN_RAW_NUL,
+                    decode: !cfg.nul_raw_terminates,
+                },
             ));
         }
-        Ok((input, (byte, HtpUnwanted::Ignore, 0, true)))
+        Ok((
+            input,
+            UrlParseResult {
+                byte,
+                expected_status_code: HtpUnwanted::Ignore,
+                flags: 0,
+                decode: true,
+            },
+        ))
     }
 }
 
