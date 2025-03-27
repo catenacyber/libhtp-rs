@@ -358,20 +358,18 @@ impl Parser {
         move |input| {
             let mut terminated = 0;
             let mut offset = 0;
-            for i in 0..input.len() {
+            for (i, c) in input.iter().enumerate() {
                 if terminated == 0 {
-                    if input[i] == b':' {
+                    if *c == b':' {
                         offset = i;
                         break;
-                    } else if input[i] == b'\n'
-                        || (self.side == Side::Response && input[i] == b'\r')
-                    {
-                        terminated = input[i];
+                    } else if *c == b'\n' || (self.side == Side::Response && *c == b'\r') {
+                        terminated = *c;
                     }
-                } else if input[i] == b' ' {
+                } else if *c == b' ' {
                     terminated = 0;
-                } else if input[i] == b'\n' && terminated == b'\r' {
-                    terminated = input[i];
+                } else if *c == b'\n' && terminated == b'\r' {
+                    terminated = *c;
                 } else {
                     offset = i - 1;
                     break;
