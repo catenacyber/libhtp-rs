@@ -406,7 +406,7 @@ impl ConnectionParser {
                         "Request chunk extension"
                     );
                 }
-                let len = len.as_ref().ok_or(HtpStatus::ERROR).inspect_err(|e| {
+                let len = len.as_ref().ok_or(HtpStatus::ERROR).inspect_err(|_e| {
                     // Invalid chunk length
                     htp_error!(
                         self.logger,
