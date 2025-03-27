@@ -306,18 +306,16 @@ fn is_line_whitespace(data: &[u8]) -> bool {
 /// Parses over leading and trailing LWS characters.
 ///
 /// Returns (any trailing non-LWS characters, (non-LWS leading characters, ascii digits))
-pub(crate) fn ascii_digits() -> impl Fn(&[u8]) -> IResult<&[u8], (&[u8], &[u8])> {
-    move |input| {
-        map(
-            tuple((
-                nom_take_is_space,
-                take_till(|c: u8| c.is_ascii_digit()),
-                digit1,
-                nom_take_is_space,
-            )),
-            |(_, leading_data, digits, _)| (leading_data, digits),
-        )(input)
-    }
+pub(crate) fn ascii_digits(input: &[u8]) -> IResult<&[u8], (&[u8], &[u8])> {
+    map(
+        tuple((
+            nom_take_is_space,
+            take_till(|c: u8| c.is_ascii_digit()),
+            digit1,
+            nom_take_is_space,
+        )),
+        |(_, leading_data, digits, _)| (leading_data, digits),
+    )(input)
 }
 
 /// Searches for and extracts the next set of hex digits from the input slice if present
@@ -737,7 +735,7 @@ mod tests {
     ) {
         // Returns (any trailing non-LWS characters, (non-LWS leading characters, ascii digits))
         assert_eq!(
-            ascii_digits()(input.as_bytes()).unwrap(),
+            ascii_digits(input.as_bytes()).unwrap(),
             (
                 remaining.as_bytes(),
                 (leading.as_bytes(), digits.as_bytes())

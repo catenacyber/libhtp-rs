@@ -50,7 +50,7 @@ pub(crate) fn parse_content_type(header: &[u8]) -> Result<Bstr> {
 ///
 /// Returns content length, or None if input is not valid.
 pub(crate) fn parse_content_length(input: &[u8], logger: Option<&mut Logger>) -> Option<u64> {
-    let (trailing_data, (leading_data, content_length)) = ascii_digits()(input).ok()?;
+    let (trailing_data, (leading_data, content_length)) = ascii_digits(input).ok()?;
     if let Some(logger) = logger {
         if !leading_data.is_empty() {
             // Contains invalid characters! But still attempt to process
@@ -287,7 +287,7 @@ pub(crate) fn parse_protocol(input: &[u8], logger: &mut Logger) -> HtpProtocol {
 
 /// Determines the numerical value of a response status given as a string.
 pub(crate) fn parse_status(status: &[u8]) -> HtpResponseNumber {
-    if let Ok((trailing_data, (leading_data, status_code))) = ascii_digits()(status) {
+    if let Ok((trailing_data, (leading_data, status_code))) = ascii_digits(status) {
         if !trailing_data.is_empty() || !leading_data.is_empty() {
             //There are invalid characters in the status code
             return HtpResponseNumber::INVALID;
