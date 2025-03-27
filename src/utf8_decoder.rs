@@ -174,7 +174,7 @@ impl Utf8Decoder {
     fn decode_byte_allow_overlong(&mut self, byte: u32) {
         let type_0: u32 = utf8d_allow_overlong[byte as usize] as u32;
         self.codepoint = if self.state != 0 {
-            (byte & 0x3f) | self.codepoint << 6
+            (byte & 0x3f) | (self.codepoint << 6)
         } else {
             (0xff >> type_0) & byte
         };
