@@ -111,7 +111,7 @@ impl Connection {
         while let Some(e) = lc.pop_front() {
             r.push(e)
         }
-        return r;
+        r
     }
 
     /// Returns the next logged message received by the log channel

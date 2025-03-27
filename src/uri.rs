@@ -473,9 +473,7 @@ fn normalize_uri_path_inplace(s: &mut Bstr) {
                     while w > 0 && s[w - 1] != b'/' {
                         w -= 1;
                     }
-                    if w > 0 {
-                        w -= 1;
-                    }
+                    w = w.saturating_sub(1);
                     state = NormUriState::SlashDotDotSlash;
                 }
                 _ => {
@@ -516,9 +514,7 @@ fn normalize_uri_path_inplace(s: &mut Bstr) {
             while w > 0 && s[w - 1] != b'/' {
                 w -= 1;
             }
-            if w > 0 {
-                w -= 1;
-            }
+            w = w.saturating_sub(1);
         }
         // nothing special to do
         NormUriState::Start | NormUriState::Regular => {}

@@ -406,14 +406,13 @@ impl ConnectionParser {
                         "Request chunk extension"
                     );
                 }
-                let len = len.as_ref().ok_or(HtpStatus::ERROR).map_err(|e| {
+                let len = len.as_ref().ok_or(HtpStatus::ERROR).inspect_err(|e| {
                     // Invalid chunk length
                     htp_error!(
                         self.logger,
                         HtpLogCode::INVALID_REQUEST_CHUNK_LEN,
                         "Request chunk encoding: Invalid chunk length"
                     );
-                    e
                 })?;
                 match len.cmp(&0) {
                     Ordering::Equal => {

@@ -368,15 +368,13 @@ impl Parser {
                     {
                         terminated = input[i];
                     }
+                } else if input[i] == b' ' {
+                    terminated = 0;
+                } else if input[i] == b'\n' && terminated == b'\r' {
+                    terminated = input[i];
                 } else {
-                    if input[i] == b' ' {
-                        terminated = 0;
-                    } else if input[i] == b'\n' && terminated == b'\r' {
-                        terminated = input[i];
-                    } else {
-                        offset = i - 1;
-                        break;
-                    }
+                    offset = i - 1;
+                    break;
                 }
             }
             let (name, rem) = input.split_at(offset);
@@ -390,18 +388,15 @@ impl Parser {
                         flags.set(HeaderFlags::NAME_TRAILING_WHITESPACE);
                     }
                 }
-                match token_chars(name) {
-                    Ok((rem, _)) => {
-                        if !rem.is_empty() {
-                            flags.set(HeaderFlags::NAME_NON_TOKEN_CHARS);
-                        }
+                if let Ok((rem, _)) = token_chars(name) {
+                    if !rem.is_empty() {
+                        flags.set(HeaderFlags::NAME_NON_TOKEN_CHARS);
                     }
-                    _ => {}
                 }
             } else {
                 flags.set(HeaderFlags::NAME_EMPTY)
             }
-            return Ok((rem, Name::new(name, flags)));
+            Ok((rem, Name::new(name, flags)))
         }
     }
 

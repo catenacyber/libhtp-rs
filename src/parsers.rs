@@ -159,7 +159,7 @@ pub(crate) fn hostname() -> impl Fn(&[u8]) -> IResult<&[u8], &[u8]> {
             |(_, _, _, hostname)| hostname,
         )(input)?;
         //There may be spaces in the middle of a hostname, so much trim only at the end
-        while hostname.ends_with(&[b' ']) {
+        while hostname.ends_with(b" ") {
             hostname = &hostname[..hostname.len() - 1];
         }
         Ok((input, hostname))

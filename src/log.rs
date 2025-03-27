@@ -213,7 +213,7 @@ impl Logger {
         // Ignore messages below our log level.
         if level <= self.level {
             let mut sender = self.sender.borrow_mut();
-            let _ = sender.push_back(Log::new(Message::new(code, msg)));
+            sender.push_back(Log::new(Message::new(code, msg)));
         }
     }
 }

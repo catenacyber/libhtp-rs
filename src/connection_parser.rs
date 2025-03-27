@@ -93,7 +93,7 @@ pub(crate) struct ParserData<'a> {
     callback_position: usize,
 }
 
-impl<'a> ParserData<'a> {
+impl ParserData<'_> {
     /// Returns a pointer to the raw data associated with Data.
     /// This returns a pointer to the entire data chunk.
     pub(crate) fn data_ptr(&self) -> *const u8 {
@@ -247,7 +247,7 @@ impl<'a> From<&'a Vec<u8>> for ParserData<'a> {
     }
 }
 
-impl<'a> From<usize> for ParserData<'a> {
+impl From<usize> for ParserData<'_> {
     fn from(gap_len: usize) -> Self {
         ParserData {
             data: None,
@@ -258,7 +258,7 @@ impl<'a> From<usize> for ParserData<'a> {
     }
 }
 
-impl<'a> From<(*const u8, usize)> for ParserData<'a> {
+impl From<(*const u8, usize)> for ParserData<'_> {
     fn from((data, len): (*const u8, usize)) -> Self {
         if data.is_null() {
             if len > 0 {
