@@ -140,7 +140,7 @@ pub unsafe extern "C" fn htp_tx_request_protocol(tx: *const Transaction) -> *con
 pub unsafe extern "C" fn htp_tx_request_protocol_number(tx: *const Transaction) -> HtpProtocol {
     tx.as_ref()
         .map(|tx| tx.request_protocol_number)
-        .unwrap_or(HtpProtocol::ERROR)
+        .unwrap_or(HtpProtocol::Error)
 }
 
 /// Get whether a transaction's protocol is version 0.9.
@@ -340,7 +340,7 @@ pub unsafe extern "C" fn htp_tx_response_protocol(tx: *const Transaction) -> *co
 pub unsafe extern "C" fn htp_tx_response_protocol_number(tx: *const Transaction) -> HtpProtocol {
     tx.as_ref()
         .map(|tx| tx.response_protocol_number)
-        .unwrap_or(HtpProtocol::ERROR)
+        .unwrap_or(HtpProtocol::Error)
 }
 
 /// Get the transaction's response status.
@@ -369,9 +369,9 @@ pub unsafe extern "C" fn htp_tx_response_status(tx: *const Transaction) -> *cons
 pub unsafe extern "C" fn htp_tx_response_status_number(tx: *const Transaction) -> i32 {
     tx.as_ref()
         .map(|tx| match tx.response_status_number {
-            HtpResponseNumber::UNKNOWN => 0,
-            HtpResponseNumber::INVALID => -1,
-            HtpResponseNumber::VALID(status) => status as i32,
+            HtpResponseNumber::Unknown => 0,
+            HtpResponseNumber::Invalid => -1,
+            HtpResponseNumber::Valid(status) => status as i32,
         })
         .unwrap_or(-1)
 }

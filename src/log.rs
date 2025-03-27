@@ -175,13 +175,13 @@ pub enum HtpLogCode {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Debug)]
 pub(crate) enum HtpLogLevel {
     /// Designates fatal error.
-    ERROR,
+    Error,
     /// Designates hazardous situations.
-    WARNING,
+    Warning,
     /// Default log level value.
-    NOTICE,
+    Notice,
     /// Designates useful information,
-    INFO,
+    Info,
 }
 #[derive(Clone)]
 /// Logger struct
@@ -198,7 +198,7 @@ impl Logger {
     pub(crate) fn new(sender: &Rc<RefCell<VecDeque<Log>>>) -> Logger {
         Self {
             sender: sender.clone(),
-            level: HtpLogLevel::NOTICE,
+            level: HtpLogLevel::Notice,
         }
     }
     /// Logs a message to the logger channel.
@@ -264,15 +264,7 @@ macro_rules! htp_log {
 #[macro_export]
 macro_rules! htp_info {
     ($logger:expr, $code:expr, $msg:expr) => {
-        htp_log!($logger, HtpLogLevel::INFO, $code, $msg);
-    };
-}
-
-/// Logs a message at the debug level.
-#[macro_export]
-macro_rules! htp_debug {
-    ($logger:expr, $code:expr, $msg:expr) => {
-        htp_log!($logger, HtpLogLevel::DEBUG, $code, $msg);
+        htp_log!($logger, HtpLogLevel::Info, $code, $msg);
     };
 }
 
@@ -280,7 +272,7 @@ macro_rules! htp_debug {
 #[macro_export]
 macro_rules! htp_warn {
     ($logger:expr, $code:expr, $msg:expr) => {
-        htp_log!($logger, HtpLogLevel::WARNING, $code, $msg);
+        htp_log!($logger, HtpLogLevel::Warning, $code, $msg);
     };
 }
 
@@ -288,7 +280,7 @@ macro_rules! htp_warn {
 #[macro_export]
 macro_rules! htp_error {
     ($logger:expr, $code:expr, $msg:expr) => {
-        htp_log!($logger, HtpLogLevel::ERROR, $code, $msg);
+        htp_log!($logger, HtpLogLevel::Error, $code, $msg);
     };
 }
 

@@ -50,7 +50,7 @@ impl Parser {
             decode_url_encoding: true,
             params: Table::with_capacity(32),
             flags: 0,
-            response_status_expected_number: HtpUnwanted::IGNORE,
+            response_status_expected_number: HtpUnwanted::Ignore,
             complete: false,
             saw_data: false,
             field: Bstr::with_capacity(64),
@@ -138,7 +138,7 @@ impl Default for Parser {
             decode_url_encoding: true,
             params: Table::with_capacity(32),
             flags: 0,
-            response_status_expected_number: HtpUnwanted::IGNORE,
+            response_status_expected_number: HtpUnwanted::Ignore,
             complete: false,
             saw_data: false,
             field: Bstr::with_capacity(64),
@@ -185,7 +185,7 @@ fn path_decode_u_encoding<'a>(
     cfg: &DecoderConfig,
 ) -> IResult<&'a [u8], (u8, u64, HtpUnwanted)> {
     let mut flags = 0;
-    let mut expected_status_code = HtpUnwanted::IGNORE;
+    let mut expected_status_code = HtpUnwanted::Ignore;
     let (i, c1) = x2c(i)?;
     let (i, c2) = x2c(i)?;
     let mut r = c2;
@@ -239,7 +239,7 @@ fn path_decode_valid_u_encoding(
         let mut output = remaining_input;
         let mut byte = b'%';
         let mut flags = 0;
-        let mut expected_status_code = HtpUnwanted::IGNORE;
+        let mut expected_status_code = HtpUnwanted::Ignore;
         if cfg.u_encoding_decode {
             let (left, hex) = take_while_m_n(4, 4, |c: u8| c.is_ascii_hexdigit())(left)?;
             output = left;
@@ -248,12 +248,12 @@ fn path_decode_valid_u_encoding(
             let (_, (b, f, c)) = path_decode_u_encoding(hex, cfg)?;
             byte = b;
             flags.set(f);
-            if c != HtpUnwanted::IGNORE {
+            if c != HtpUnwanted::Ignore {
                 expected_status_code = c;
             }
             if byte == 0 {
                 flags.set(HtpFlags::PATH_ENCODED_NUL);
-                if cfg.nul_encoded_unwanted != HtpUnwanted::IGNORE {
+                if cfg.nul_encoded_unwanted != HtpUnwanted::Ignore {
                     expected_status_code = cfg.nul_encoded_unwanted
                 }
                 if cfg.nul_encoded_terminates {
@@ -263,7 +263,7 @@ fn path_decode_valid_u_encoding(
             }
         }
         let (byte, code) = path_decode_control(byte, cfg);
-        if code != HtpUnwanted::IGNORE {
+        if code != HtpUnwanted::Ignore {
             expected_status_code = code;
         }
         Ok((output, (byte, expected_status_code, flags, true)))
@@ -280,7 +280,7 @@ fn path_decode_invalid_u_encoding(
         let mut output = remaining_input;
         let mut byte = b'%';
         let mut flags = 0;
-        let mut expected_status_code = HtpUnwanted::IGNORE;
+        let mut expected_status_code = HtpUnwanted::Ignore;
         let (left, _) = tag_no_case("u")(remaining_input)?;
         if cfg.u_encoding_decode {
             let (left, hex) = take(4usize)(left)?;
@@ -292,7 +292,7 @@ fn path_decode_invalid_u_encoding(
                 return Ok((remaining_input, (byte, expected_status_code, flags, false)));
             } else if cfg.url_encoding_invalid_handling == HtpUrlEncodingHandling::PROCESS_INVALID {
                 let (_, (b, f, c)) = path_decode_u_encoding(hex, cfg)?;
-                if c != HtpUnwanted::IGNORE {
+                if c != HtpUnwanted::Ignore {
                     expected_status_code = c;
                 }
                 flags.set(f);
@@ -301,7 +301,7 @@ fn path_decode_invalid_u_encoding(
             }
         }
         let (byte, code) = path_decode_control(byte, cfg);
-        if code != HtpUnwanted::IGNORE {
+        if code != HtpUnwanted::Ignore {
             expected_status_code = code;
         }
         Ok((output, (byte, expected_status_code, flags, true)))
@@ -456,7 +456,7 @@ fn path_decode_control(mut byte: u8, cfg: &DecoderConfig) -> (u8, HtpUnwanted) {
     let expected_status_code = if byte < 0x20 {
         cfg.control_chars_unwanted
     } else {
-        HtpUnwanted::IGNORE
+        HtpUnwanted::Ignore
     };
     // Convert backslashes to forward slashes, if necessary
     if byte == b'\\' && cfg.backslash_convert_slashes {
@@ -482,7 +482,7 @@ fn path_decode_uri<'a>(
 ) -> IResult<&'a [u8], (Vec<u8>, u64, HtpUnwanted)> {
     fold_many0(
         alt((path_decode_percent(cfg), path_parse_other(cfg))),
-        || (Vec::new(), 0, HtpUnwanted::IGNORE),
+        || (Vec::new(), 0, HtpUnwanted::Ignore),
         |mut acc: (Vec<_>, u64, HtpUnwanted), (byte, code, flag, insert)| {
             // If we're compressing separators then we need
             // to check if the previous character was a separator
@@ -536,13 +536,13 @@ fn decode_uri<'a>(
 ) -> IResult<&'a [u8], (Vec<u8>, u64, HtpUnwanted)> {
     fold_many0(
         alt((decode_percent(cfg), decode_plus(cfg), unencoded_byte(cfg))),
-        || (Vec::new(), 0, HtpUnwanted::IGNORE),
+        || (Vec::new(), 0, HtpUnwanted::Ignore),
         |mut acc: (Vec<_>, u64, HtpUnwanted), (byte, code, flag, insert)| {
             if insert {
                 acc.0.push(byte);
             }
             acc.1.set(flag);
-            if code != HtpUnwanted::IGNORE {
+            if code != HtpUnwanted::Ignore {
                 acc.2 = code;
             }
             acc
@@ -594,7 +594,7 @@ fn decode_valid_u_encoding(
             let (_, (byte, flags)) = decode_u_encoding_params(hex, cfg)?;
             return Ok((input, (byte, cfg.u_encoding_unwanted, flags, true)));
         }
-        Ok((input, (b'%', HtpUnwanted::IGNORE, 0, true)))
+        Ok((input, (b'%', HtpUnwanted::Ignore, 0, true)))
     }
 }
 
@@ -608,14 +608,14 @@ fn decode_invalid_u_encoding(
     move |mut input| {
         let (left, _) = alt((char('u'), char('U')))(input)?;
         let mut byte = b'%';
-        let mut code = HtpUnwanted::IGNORE;
+        let mut code = HtpUnwanted::Ignore;
         let mut flags = 0;
         let mut insert = true;
         if cfg.u_encoding_decode {
             // Invalid %u encoding (could not find 4 xdigits).
             let (left, invalid_hex) = take(4usize)(left)?;
             flags.set(HtpFlags::URLEN_INVALID_ENCODING);
-            code = if cfg.url_encoding_invalid_unwanted != HtpUnwanted::IGNORE {
+            code = if cfg.url_encoding_invalid_unwanted != HtpUnwanted::Ignore {
                 cfg.url_encoding_invalid_unwanted
             } else {
                 cfg.u_encoding_unwanted
@@ -644,7 +644,7 @@ fn decode_valid_hex() -> impl Fn(&[u8]) -> IResult<&[u8], (u8, HtpUnwanted, u64,
         not(alt((char('u'), char('U'))))(input)?;
         let (input, hex) = take_while_m_n(2, 2, |c: u8| c.is_ascii_hexdigit())(input)?;
         let (_, byte) = x2c(hex)?;
-        Ok((input, (byte, HtpUnwanted::IGNORE, 0, true)))
+        Ok((input, (byte, HtpUnwanted::Ignore, 0, true)))
     }
 }
 
@@ -714,7 +714,7 @@ fn decode_percent(
         //Did we get an encoded NUL byte?
         if byte == 0 {
             flags.set(HtpFlags::URLEN_ENCODED_NUL);
-            if cfg.nul_encoded_unwanted != HtpUnwanted::IGNORE {
+            if cfg.nul_encoded_unwanted != HtpUnwanted::Ignore {
                 expected_status_code = cfg.nul_encoded_unwanted
             }
             if cfg.nul_encoded_terminates {
@@ -741,7 +741,7 @@ fn decode_plus(
                 byte as u8
             }
         })(input)?;
-        Ok((input, (byte, HtpUnwanted::IGNORE, 0, true)))
+        Ok((input, (byte, HtpUnwanted::Ignore, 0, true)))
     }
 }
 
@@ -767,7 +767,7 @@ fn unencoded_byte(
                 ),
             ));
         }
-        Ok((input, (byte, HtpUnwanted::IGNORE, 0, true)))
+        Ok((input, (byte, HtpUnwanted::Ignore, 0, true)))
     }
 }
 
@@ -963,7 +963,7 @@ mod test {
         #[case] flags: u64,
     ) {
         let mut cfg = Config::default();
-        let mut response_status_expected_number = HtpUnwanted::IGNORE;
+        let mut response_status_expected_number = HtpUnwanted::Ignore;
 
         let mut input_process = Bstr::from(input);
         let mut flags_process = 0;
@@ -1036,7 +1036,7 @@ mod test {
     ) {
         let mut cfg = Config::default();
         cfg.set_u_encoding_decode(true);
-        let mut response_status_expected_number = HtpUnwanted::IGNORE;
+        let mut response_status_expected_number = HtpUnwanted::Ignore;
 
         let mut input_process = Bstr::from(input);
         cfg.set_url_encoding_invalid_handling(HtpUrlEncodingHandling::PROCESS_INVALID);
@@ -1086,7 +1086,7 @@ mod test {
         cfg.set_nul_raw_terminates(true);
         let mut i = Bstr::from(input);
         let mut flags = 0;
-        let mut response_status_expected_number = HtpUnwanted::IGNORE;
+        let mut response_status_expected_number = HtpUnwanted::Ignore;
         path_decode_uri_inplace(
             &cfg.decoder_cfg,
             &mut flags,
@@ -1108,7 +1108,7 @@ mod test {
         cfg.set_path_separators_compress(true);
         let mut i = Bstr::from(input);
         let mut flags = 0;
-        let mut response_status_expected_number = HtpUnwanted::IGNORE;
+        let mut response_status_expected_number = HtpUnwanted::Ignore;
         path_decode_uri_inplace(
             &cfg.decoder_cfg,
             &mut flags,

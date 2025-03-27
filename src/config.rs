@@ -135,7 +135,7 @@ impl Default for Config {
             hook_response_trailer: TxHook::default(),
             hook_response_complete: TxHook::default(),
             hook_transaction_complete: TxHook::default(),
-            requestline_leading_whitespace_unwanted: HtpUnwanted::IGNORE,
+            requestline_leading_whitespace_unwanted: HtpUnwanted::Ignore,
             request_decompression_enabled: false,
             compression_options: Options::default(),
             flush_incomplete: false,
@@ -208,17 +208,17 @@ impl Default for DecoderConfig {
             path_separators_decode: false,
             plusspace_decode: true,
             nul_raw_terminates: false,
-            nul_raw_unwanted: HtpUnwanted::IGNORE,
-            control_chars_unwanted: HtpUnwanted::IGNORE,
+            nul_raw_unwanted: HtpUnwanted::Ignore,
+            control_chars_unwanted: HtpUnwanted::Ignore,
             allow_space_uri: false,
             u_encoding_decode: false,
-            u_encoding_unwanted: HtpUnwanted::IGNORE,
+            u_encoding_unwanted: HtpUnwanted::Ignore,
             url_encoding_invalid_handling: HtpUrlEncodingHandling::PRESERVE_PERCENT,
-            url_encoding_invalid_unwanted: HtpUnwanted::IGNORE,
+            url_encoding_invalid_unwanted: HtpUnwanted::Ignore,
             nul_encoded_terminates: false,
-            nul_encoded_unwanted: HtpUnwanted::IGNORE,
+            nul_encoded_unwanted: HtpUnwanted::Ignore,
             normalized_uri_include_all: false,
-            utf8_invalid_unwanted: HtpUnwanted::IGNORE,
+            utf8_invalid_unwanted: HtpUnwanted::Ignore,
             utf8_convert_bestfit: false,
             bestfit_map: UnicodeBestfitMap::default(),
         }
@@ -257,9 +257,9 @@ pub enum HtpServerPersonality {
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub(crate) enum HtpUnwanted {
     /// Ignores problem.
-    IGNORE,
+    Ignore,
     /// Responds with HTTP 400 status code.
-    CODE_400 = 400,
+    Code400 = 400,
 }
 
 /// Enumerates the possible approaches to handling invalid URL-encodings.
@@ -432,7 +432,7 @@ impl Config {
                 self.set_convert_lowercase(true);
                 self.set_utf8_convert_bestfit(true);
                 self.set_u_encoding_decode(true);
-                self.set_requestline_leading_whitespace_unwanted(HtpUnwanted::IGNORE);
+                self.set_requestline_leading_whitespace_unwanted(HtpUnwanted::Ignore);
             }
             HtpServerPersonality::APACHE_2 => {
                 self.set_backslash_convert_slashes(false);
@@ -440,9 +440,9 @@ impl Config {
                 self.set_path_separators_compress(true);
                 self.set_u_encoding_decode(false);
                 self.set_url_encoding_invalid_handling(HtpUrlEncodingHandling::PRESERVE_PERCENT);
-                self.set_url_encoding_invalid_unwanted(HtpUnwanted::CODE_400);
-                self.set_control_chars_unwanted(HtpUnwanted::IGNORE);
-                self.set_requestline_leading_whitespace_unwanted(HtpUnwanted::CODE_400);
+                self.set_url_encoding_invalid_unwanted(HtpUnwanted::Code400);
+                self.set_control_chars_unwanted(HtpUnwanted::Ignore);
+                self.set_requestline_leading_whitespace_unwanted(HtpUnwanted::Code400);
             }
             HtpServerPersonality::IIS_5_1 => {
                 self.set_backslash_convert_slashes(true);
@@ -450,8 +450,8 @@ impl Config {
                 self.set_path_separators_compress(true);
                 self.set_u_encoding_decode(false);
                 self.set_url_encoding_invalid_handling(HtpUrlEncodingHandling::PRESERVE_PERCENT);
-                self.set_control_chars_unwanted(HtpUnwanted::IGNORE);
-                self.set_requestline_leading_whitespace_unwanted(HtpUnwanted::IGNORE);
+                self.set_control_chars_unwanted(HtpUnwanted::Ignore);
+                self.set_requestline_leading_whitespace_unwanted(HtpUnwanted::Ignore);
             }
             HtpServerPersonality::IIS_6_0 => {
                 self.set_backslash_convert_slashes(true);
@@ -459,9 +459,9 @@ impl Config {
                 self.set_path_separators_compress(true);
                 self.set_u_encoding_decode(true);
                 self.set_url_encoding_invalid_handling(HtpUrlEncodingHandling::PRESERVE_PERCENT);
-                self.set_u_encoding_unwanted(HtpUnwanted::CODE_400);
-                self.set_control_chars_unwanted(HtpUnwanted::CODE_400);
-                self.set_requestline_leading_whitespace_unwanted(HtpUnwanted::IGNORE);
+                self.set_u_encoding_unwanted(HtpUnwanted::Code400);
+                self.set_control_chars_unwanted(HtpUnwanted::Code400);
+                self.set_requestline_leading_whitespace_unwanted(HtpUnwanted::Ignore);
             }
             HtpServerPersonality::IIS_7_0 | HtpServerPersonality::IIS_7_5 => {
                 self.set_backslash_convert_slashes(true);
@@ -469,9 +469,9 @@ impl Config {
                 self.set_path_separators_compress(true);
                 self.set_u_encoding_decode(true);
                 self.set_url_encoding_invalid_handling(HtpUrlEncodingHandling::PRESERVE_PERCENT);
-                self.set_url_encoding_invalid_unwanted(HtpUnwanted::CODE_400);
-                self.set_control_chars_unwanted(HtpUnwanted::CODE_400);
-                self.set_requestline_leading_whitespace_unwanted(HtpUnwanted::IGNORE);
+                self.set_url_encoding_invalid_unwanted(HtpUnwanted::Code400);
+                self.set_control_chars_unwanted(HtpUnwanted::Code400);
+                self.set_requestline_leading_whitespace_unwanted(HtpUnwanted::Ignore);
             }
             _ => return Err(HtpStatus::ERROR),
         }

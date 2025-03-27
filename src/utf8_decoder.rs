@@ -215,7 +215,7 @@ pub(crate) fn decode_and_validate_inplace(
     }
     flags.set(decoder.flags);
 
-    if flags.is_set(HtpFlags::PATH_UTF8_INVALID) && cfg.utf8_invalid_unwanted != HtpUnwanted::IGNORE
+    if flags.is_set(HtpFlags::PATH_UTF8_INVALID) && cfg.utf8_invalid_unwanted != HtpUnwanted::Ignore
     {
         *status = cfg.utf8_invalid_unwanted;
     }
@@ -242,7 +242,7 @@ mod tests {
         cfg.set_utf8_convert_bestfit(true);
         let mut i = Bstr::from(input);
         let mut flags = 0;
-        let mut response_status_expected_number = HtpUnwanted::IGNORE;
+        let mut response_status_expected_number = HtpUnwanted::Ignore;
         decode_and_validate_inplace(
             &cfg.decoder_cfg,
             &mut flags,

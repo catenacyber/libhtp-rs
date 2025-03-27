@@ -567,7 +567,7 @@ pub(crate) use assert_evader_response;
 /// assert_evader_chunked_response!(tx);
 macro_rules! assert_evader_chunked {
     ($tx:expr) => {{
-        assert_eq!($tx.response_transfer_coding, HtpTransferCoding::CHUNKED);
+        assert_eq!($tx.response_transfer_coding, HtpTransferCoding::Chunked);
         assert_response_header_eq!($tx, "Yet-Another-Header", "foo");
         assert_eq!(68, ($tx).response_entity_len);
         assert_eq!(156, ($tx).response_message_len);

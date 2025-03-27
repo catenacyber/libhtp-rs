@@ -558,7 +558,7 @@ fn RequestLineParsing4() {
     // Check the results now.
     let tx = t.connp.tx(tx_id).unwrap();
     assert!(tx.request_method.as_ref().unwrap().eq_slice("GET"));
-    assert_eq!(HtpProtocol::INVALID, tx.request_protocol_number);
+    assert_eq!(HtpProtocol::Invalid, tx.request_protocol_number);
     assert!(tx
         .request_protocol
         .as_ref()
@@ -582,7 +582,7 @@ fn RequestLineParsing5() {
     // Check the results now.
     let tx = t.connp.tx(tx_id).unwrap();
     assert!(tx.request_method.as_ref().unwrap().eq_slice("GET"));
-    assert_eq!(HtpProtocol::INVALID, tx.request_protocol_number);
+    assert_eq!(HtpProtocol::Invalid, tx.request_protocol_number);
     assert!(tx.request_protocol.as_ref().unwrap().eq_slice("01.10"));
     assert!(tx.request_uri.as_ref().unwrap().eq_slice("/ HTTP  /"));
 }
@@ -605,7 +605,7 @@ fn RequestLineParsing6() {
     // Check the results now.
     let tx = t.connp.tx(tx_id).unwrap();
     assert!(tx.request_method.as_ref().unwrap().eq_slice("GET"));
-    assert_eq!(HtpProtocol::INVALID, tx.request_protocol_number);
+    assert_eq!(HtpProtocol::Invalid, tx.request_protocol_number);
     assert!(tx.request_protocol.as_ref().unwrap().eq_slice("01.10"));
     assert!(tx.request_uri.as_ref().unwrap().eq_slice("/\tHTTP\t\t/"));
 }
@@ -792,7 +792,7 @@ fn ResponseLineIncomplete() {
     assert!(tx.response_protocol.as_ref().unwrap().eq_slice("HTTP/1.1"));
     assert_eq!(HtpProtocol::V1_1, tx.response_protocol_number);
     assert!(tx.response_status.is_none());
-    assert_eq!(HtpResponseNumber::INVALID, tx.response_status_number);
+    assert_eq!(HtpResponseNumber::Invalid, tx.response_status_number);
     assert!(tx.response_message.is_none());
     t.connp.state_response_complete(&mut p).unwrap();
 }

@@ -64,26 +64,26 @@ impl<'a> Data<'a> {
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub(crate) enum HtpTransferCoding {
     /// Body coding not determined yet.
-    UNKNOWN,
+    Unknown,
     /// No body.
-    NO_BODY,
+    NoBody,
     /// Identity coding is used, which means that the body was sent as is.
-    IDENTITY,
+    Identity,
     /// Chunked encoding.
-    CHUNKED,
+    Chunked,
     /// We could not recognize the encoding.
-    INVALID,
+    Invalid,
 }
 
 /// Enumerates the possible server personalities.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub(crate) enum HtpResponseNumber {
     /// Default
-    UNKNOWN,
+    Unknown,
     /// Could not resolve response number
-    INVALID,
+    Invalid,
     /// Valid response number
-    VALID(u16),
+    Valid(u16),
 }
 
 impl HtpResponseNumber {
@@ -91,8 +91,8 @@ impl HtpResponseNumber {
     pub(crate) fn in_range(self, min: u16, max: u16) -> bool {
         use HtpResponseNumber::*;
         match self {
-            UNKNOWN | INVALID => false,
-            VALID(ref status) => status >= &min && status <= &max,
+            Unknown | Invalid => false,
+            Valid(ref status) => status >= &min && status <= &max,
         }
     }
 
@@ -101,8 +101,8 @@ impl HtpResponseNumber {
     pub(crate) fn eq_num(self, num: u16) -> bool {
         use HtpResponseNumber::*;
         match self {
-            UNKNOWN | INVALID => false,
-            VALID(ref status) => status == &num,
+            Unknown | Invalid => false,
+            Valid(ref status) => status == &num,
         }
     }
 }
@@ -263,7 +263,7 @@ pub enum HtpAuthType {
     /// This is the default value that is used before
     /// the presence of authentication is determined (e.g.,
     /// before request headers are seen).
-    UNKNOWN,
+    Unknown,
     /// No authentication.
     NONE,
     /// HTTP Basic authentication used.
@@ -283,11 +283,11 @@ pub enum HtpAuthType {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Debug)]
 pub enum HtpProtocol {
     /// Error with the transaction side.
-    ERROR = -3,
+    Error = -3,
     /// Could not resolve protocol version number.
-    INVALID = -2,
+    Invalid = -2,
     /// Default protocol value.
-    UNKNOWN = -1,
+    Unknown = -1,
     /// HTTP/0.9 version.
     V0_9 = 9,
     /// HTTP/1.0 version.
@@ -607,10 +607,10 @@ impl Transaction {
             request_ignored_lines: 0,
             request_line: None,
             request_method: None,
-            request_method_number: HtpMethod::UNKNOWN,
+            request_method_number: HtpMethod::Unknown,
             request_uri: None,
             request_protocol: None,
-            request_protocol_number: HtpProtocol::UNKNOWN,
+            request_protocol_number: HtpProtocol::Unknown,
             is_protocol_0_9: false,
             parsed_uri: None,
             parsed_uri_raw: None,
@@ -619,15 +619,15 @@ impl Transaction {
             request_message_len: 0,
             request_entity_len: 0,
             request_headers: Headers::with_capacity(32),
-            request_transfer_coding: HtpTransferCoding::UNKNOWN,
-            request_content_encoding: HtpContentEncoding::NONE,
-            request_content_encoding_processing: HtpContentEncoding::NONE,
+            request_transfer_coding: HtpTransferCoding::Unknown,
+            request_content_encoding: HtpContentEncoding::None,
+            request_content_encoding_processing: HtpContentEncoding::None,
             request_content_type: None,
             request_content_length: None,
             request_decompressor: None,
             hook_request_body_data: DataHook::default(),
             hook_response_body_data: DataHook::default(),
-            request_auth_type: HtpAuthType::UNKNOWN,
+            request_auth_type: HtpAuthType::Unknown,
             request_auth_username: None,
             request_auth_password: None,
             request_auth_token: None,
@@ -636,10 +636,10 @@ impl Transaction {
             response_ignored_lines: 0,
             response_line: None,
             response_protocol: None,
-            response_protocol_number: HtpProtocol::UNKNOWN,
+            response_protocol_number: HtpProtocol::Unknown,
             response_status: None,
-            response_status_number: HtpResponseNumber::UNKNOWN,
-            response_status_expected_number: HtpUnwanted::IGNORE,
+            response_status_number: HtpResponseNumber::Unknown,
+            response_status_expected_number: HtpUnwanted::Ignore,
             response_message: None,
             seen_100continue: false,
             response_headers: Headers::with_capacity(32),
@@ -647,9 +647,9 @@ impl Transaction {
             response_message_len: 0,
             response_entity_len: 0,
             response_content_length: None,
-            response_transfer_coding: HtpTransferCoding::UNKNOWN,
-            response_content_encoding: HtpContentEncoding::NONE,
-            response_content_encoding_processing: HtpContentEncoding::NONE,
+            response_transfer_coding: HtpTransferCoding::Unknown,
+            response_content_encoding: HtpContentEncoding::None,
+            response_content_encoding_processing: HtpContentEncoding::None,
             response_content_type: None,
             response_decompressor: None,
             flags: 0,
@@ -691,8 +691,8 @@ impl Transaction {
 
     /// Determine if the request has a body.
     pub(crate) fn request_has_body(&self) -> bool {
-        self.request_transfer_coding == HtpTransferCoding::IDENTITY
-            || self.request_transfer_coding == HtpTransferCoding::CHUNKED
+        self.request_transfer_coding == HtpTransferCoding::Identity
+            || self.request_transfer_coding == HtpTransferCoding::Chunked
     }
 
     /// Process the extracted request headers and set the appropriate flags
@@ -709,7 +709,7 @@ impl Transaction {
             //      (e.g., PHP is run), but without the body. It then closes the connection.
             if te.value.index_of_nocase_nozero("chunked").is_none() {
                 // Invalid T-E header value.
-                self.request_transfer_coding = HtpTransferCoding::INVALID;
+                self.request_transfer_coding = HtpTransferCoding::Invalid;
                 self.flags.set(HtpFlags::REQUEST_INVALID_T_E);
                 self.flags.set(HtpFlags::REQUEST_INVALID)
             } else {
@@ -724,7 +724,7 @@ impl Transaction {
                     self.flags.set(HtpFlags::REQUEST_SMUGGLING);
                 }
                 // If the T-E header is present we are going to use it.
-                self.request_transfer_coding = HtpTransferCoding::CHUNKED;
+                self.request_transfer_coding = HtpTransferCoding::Chunked;
                 // We are still going to check for the presence of C-L.
                 if cl_opt.is_some() {
                     // According to the HTTP/1.1 RFC (section 4.4):
@@ -755,20 +755,20 @@ impl Transaction {
                 parse_content_length(cl.value.as_slice(), Some(&mut self.logger));
             if self.request_content_length.is_some() {
                 // We have a request body of known length.
-                self.request_transfer_coding = HtpTransferCoding::IDENTITY
+                self.request_transfer_coding = HtpTransferCoding::Identity
             } else {
-                self.request_transfer_coding = HtpTransferCoding::INVALID;
+                self.request_transfer_coding = HtpTransferCoding::Invalid;
                 self.flags.set(HtpFlags::REQUEST_INVALID_C_L);
                 self.flags.set(HtpFlags::REQUEST_INVALID)
             }
         } else {
             // No body.
-            self.request_transfer_coding = HtpTransferCoding::NO_BODY
+            self.request_transfer_coding = HtpTransferCoding::NoBody
         }
         // If we could not determine the correct body handling,
         // consider the request invalid.
-        if self.request_transfer_coding == HtpTransferCoding::UNKNOWN {
-            self.request_transfer_coding = HtpTransferCoding::INVALID;
+        if self.request_transfer_coding == HtpTransferCoding::Unknown {
+            self.request_transfer_coding = HtpTransferCoding::Invalid;
             self.flags.set(HtpFlags::REQUEST_INVALID)
         }
 
@@ -850,7 +850,7 @@ impl Transaction {
     /// Sanity check the response line, logging if there is an invalid protocol or status number.
     pub(crate) fn validate_response_line(&mut self) {
         // Is the response line valid?
-        if self.response_protocol_number == HtpProtocol::INVALID {
+        if self.response_protocol_number == HtpProtocol::Invalid {
             htp_warn!(
                 self.logger,
                 HtpLogCode::RESPONSE_LINE_INVALID_PROTOCOL,
@@ -864,7 +864,7 @@ impl Transaction {
                 HtpLogCode::RESPONSE_LINE_INVALID_RESPONSE_STATUS,
                 "Invalid response line: invalid response status."
             );
-            self.response_status_number = HtpResponseNumber::INVALID;
+            self.response_status_number = HtpResponseNumber::Invalid;
             self.flags.set(HtpFlags::STATUS_LINE_INVALID)
         }
     }

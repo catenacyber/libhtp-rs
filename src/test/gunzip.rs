@@ -41,7 +41,7 @@ impl Test {
             connp,
             expected,
             decompressor: Decompressor::new_with_callback(
-                HtpContentEncoding::GZIP,
+                HtpContentEncoding::Gzip,
                 Box::new(move |data: Option<&[u8]>| {
                     let data = ParserData::from(data);
                     GUnzip_decompressor_callback(unsafe { &mut *tx }, &data);

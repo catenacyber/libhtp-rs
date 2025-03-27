@@ -18,41 +18,41 @@ use time::OffsetDateTime;
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub(crate) enum State {
     /// Default state.
-    NONE,
+    None,
     /// State once a transaction is processed or about to be processed.
-    IDLE,
+    Idle,
     /// State for request/response line parsing.
-    LINE,
+    Line,
     /// State for header parsing.
-    HEADERS,
+    Headers,
     /// State for finalizing chunked body data parsing.
-    BODY_CHUNKED_DATA_END,
+    BodyChunkedDataEnd,
     /// State for chunked body data.
-    BODY_CHUNKED_DATA,
+    BodyChunkedData,
     /// Parse the chunked length state.
-    BODY_CHUNKED_LENGTH,
+    BodyChunkedLength,
     /// State to determine encoding of body data.
-    BODY_DETERMINE,
+    BodyDetermine,
     /// State for finalizing transaction side.
-    FINALIZE,
+    Finalize,
     // Used by request_state only
     /// State for determining the request protocol.
-    PROTOCOL,
+    Protocol,
     /// State to determine if there is a CONNECT request.
-    CONNECT_CHECK,
+    ConnectCheck,
     /// State to determine if inbound parsing needs to be suspended.
-    CONNECT_PROBE_DATA,
+    ConnectProbeData,
     /// State to determine if inbound parsing can continue if it was suspended.
-    CONNECT_WAIT_RESPONSE,
+    ConnectWaitResponse,
     /// State to process request body data.
-    BODY_IDENTITY,
+    BodyIdentity,
     /// State to consume remaining data in request buffer for the HTTP 0.9 case.
-    IGNORE_DATA_AFTER_HTTP_0_9,
+    IgnoreDataAfterHTTP09,
     // Used by response_state only
     /// State to consume response remaining body data when content-length is unknown.
-    BODY_IDENTITY_STREAM_CLOSE,
+    BodyIdentityStreamClose,
     /// State to consume response body data when content-length is known.
-    BODY_IDENTITY_CL_KNOWN,
+    BodyIdentityCLKnown,
 }
 
 /// Enumerates all stream states. Each connection has two streams, one
@@ -390,8 +390,8 @@ impl ConnectionParser {
             request_content_length: None,
             request_body_data_left: None,
             request_chunked_length: None,
-            request_state: State::IDLE,
-            request_state_previous: State::NONE,
+            request_state: State::Idle,
+            request_state_previous: State::None,
             request_data_receiver_hook: None,
             response_timestamp: OffsetDateTime::from(SystemTime::now()),
             response_bytes_consumed: 0,
@@ -400,8 +400,8 @@ impl ConnectionParser {
             response_content_length: None,
             response_body_data_left: None,
             response_chunked_length: None,
-            response_state: State::IDLE,
-            response_state_previous: State::NONE,
+            response_state: State::Idle,
+            response_state_previous: State::None,
             response_data_receiver_hook: None,
             transactions: Transactions::new(&cfg, &logger),
         }
@@ -471,21 +471,21 @@ impl ConnectionParser {
     /// Handle the current state to be processed.
     pub(crate) fn handle_request_state(&mut self, data: &mut ParserData) -> Result<()> {
         match self.request_state {
-            State::NONE => Err(HtpStatus::ERROR),
-            State::IDLE => self.request_idle(data),
-            State::IGNORE_DATA_AFTER_HTTP_0_9 => self.request_ignore_data_after_http_0_9(data),
-            State::LINE => self.request_line(data),
-            State::PROTOCOL => self.request_protocol(data),
-            State::HEADERS => self.request_headers(data),
-            State::CONNECT_WAIT_RESPONSE => self.request_connect_wait_response(),
-            State::CONNECT_CHECK => self.request_connect_check(),
-            State::CONNECT_PROBE_DATA => self.request_connect_probe_data(data),
-            State::BODY_DETERMINE => self.request_body_determine(),
-            State::BODY_CHUNKED_DATA => self.request_body_chunked_data(data),
-            State::BODY_CHUNKED_LENGTH => self.request_body_chunked_length(data),
-            State::BODY_CHUNKED_DATA_END => self.request_body_chunked_data_end(data),
-            State::BODY_IDENTITY => self.request_body_identity(data),
-            State::FINALIZE => self.request_finalize(data),
+            State::None => Err(HtpStatus::ERROR),
+            State::Idle => self.request_idle(data),
+            State::IgnoreDataAfterHTTP09 => self.request_ignore_data_after_http_0_9(data),
+            State::Line => self.request_line(data),
+            State::Protocol => self.request_protocol(data),
+            State::Headers => self.request_headers(data),
+            State::ConnectWaitResponse => self.request_connect_wait_response(),
+            State::ConnectCheck => self.request_connect_check(),
+            State::ConnectProbeData => self.request_connect_probe_data(data),
+            State::BodyDetermine => self.request_body_determine(),
+            State::BodyChunkedData => self.request_body_chunked_data(data),
+            State::BodyChunkedLength => self.request_body_chunked_length(data),
+            State::BodyChunkedDataEnd => self.request_body_chunked_data_end(data),
+            State::BodyIdentity => self.request_body_identity(data),
+            State::Finalize => self.request_finalize(data),
             // These are only used by response_state
             _ => Err(HtpStatus::ERROR),
         }
@@ -494,17 +494,17 @@ impl ConnectionParser {
     /// Handle the current state to be processed.
     pub(crate) fn handle_response_state(&mut self, data: &mut ParserData) -> Result<()> {
         match self.response_state {
-            State::NONE => Err(HtpStatus::ERROR),
-            State::IDLE => self.response_idle(data),
-            State::LINE => self.response_line(data),
-            State::HEADERS => self.response_headers(data),
-            State::BODY_DETERMINE => self.response_body_determine(data),
-            State::BODY_CHUNKED_DATA => self.response_body_chunked_data(data),
-            State::BODY_CHUNKED_LENGTH => self.response_body_chunked_length(data),
-            State::BODY_CHUNKED_DATA_END => self.response_body_chunked_data_end(data),
-            State::FINALIZE => self.response_finalize(data),
-            State::BODY_IDENTITY_STREAM_CLOSE => self.response_body_identity_stream_close(data),
-            State::BODY_IDENTITY_CL_KNOWN => self.response_body_identity_cl_known(data),
+            State::None => Err(HtpStatus::ERROR),
+            State::Idle => self.response_idle(data),
+            State::Line => self.response_line(data),
+            State::Headers => self.response_headers(data),
+            State::BodyDetermine => self.response_body_determine(data),
+            State::BodyChunkedData => self.response_body_chunked_data(data),
+            State::BodyChunkedLength => self.response_body_chunked_length(data),
+            State::BodyChunkedDataEnd => self.response_body_chunked_data_end(data),
+            State::Finalize => self.response_finalize(data),
+            State::BodyIdentityStreamClose => self.response_body_identity_stream_close(data),
+            State::BodyIdentityCLKnown => self.response_body_identity_cl_known(data),
             // These are only used by request_state
             _ => Err(HtpStatus::ERROR),
         }
@@ -644,7 +644,7 @@ impl ConnectionParser {
     /// callbacks does not want to follow the transaction any more.
     pub(crate) fn state_request_start(&mut self) -> Result<()> {
         // Change state into request line parsing.
-        self.request_state = State::LINE;
+        self.request_state = State::Line;
         let req = self.request_mut();
         if req.is_none() {
             return Err(HtpStatus::ERROR);
@@ -682,7 +682,7 @@ impl ConnectionParser {
                 .clone()
                 .run_all(self, self.request_index())?;
             // Completed parsing this request; finalize it now.
-            self.request_state = State::FINALIZE;
+            self.request_state = State::Finalize;
         } else if request_progress >= HtpRequestProgress::LINE {
             // Request headers.
             // Did this request arrive in multiple data chunks?
@@ -699,7 +699,7 @@ impl ConnectionParser {
             self.request_initialize_decompressors()?;
 
             // We still proceed if the request is invalid.
-            self.request_state = State::CONNECT_CHECK;
+            self.request_state = State::ConnectCheck;
         } else {
             htp_warn!(
                 self.logger,
@@ -744,7 +744,7 @@ impl ConnectionParser {
             req.complete_normalized_uri = complete_normalized_uri;
         }
         // Move on to the next phase.
-        self.request_state = State::PROTOCOL;
+        self.request_state = State::Protocol;
         Ok(())
     }
 
@@ -775,9 +775,9 @@ impl ConnectionParser {
         }
         // Determine what happens next, and remove this transaction from the parser.
         self.request_state = if self.request().unwrap().is_protocol_0_9 {
-            State::IGNORE_DATA_AFTER_HTTP_0_9
+            State::IgnoreDataAfterHTTP09
         } else {
-            State::IDLE
+            State::Idle
         };
         // Check if the entire transaction is complete.
         self.finalize(self.request_index())?;
@@ -815,14 +815,14 @@ impl ConnectionParser {
         let tx = tx.unwrap();
 
         if tx.is_protocol_0_9 {
-            tx.response_transfer_coding = HtpTransferCoding::IDENTITY;
-            tx.response_content_encoding_processing = HtpContentEncoding::NONE;
+            tx.response_transfer_coding = HtpTransferCoding::Identity;
+            tx.response_content_encoding_processing = HtpContentEncoding::None;
             tx.response_progress = HtpResponseProgress::BODY;
-            self.response_state = State::BODY_IDENTITY_STREAM_CLOSE;
+            self.response_state = State::BodyIdentityStreamClose;
             self.response_body_data_left = None
         } else {
             tx.response_progress = HtpResponseProgress::LINE;
-            self.response_state = State::LINE
+            self.response_state = State::Line
         }
         // Run hook RESPONSE_START.
         self.cfg
@@ -835,7 +835,7 @@ impl ConnectionParser {
         let tx = self.response_mut().unwrap();
         if tx.request_method.is_none()
             && tx.request_uri.is_none()
-            && self.request_state == State::LINE
+            && self.request_state == State::Line
         {
             htp_warn!(
                 self.logger,
@@ -893,7 +893,7 @@ impl ConnectionParser {
         if tx.response_progress != HtpResponseProgress::COMPLETE {
             tx.response_progress = HtpResponseProgress::COMPLETE;
             // Run the last RESPONSE_BODY_DATA HOOK, but only if there was a response body present.
-            if tx.response_transfer_coding != HtpTransferCoding::NO_BODY {
+            if tx.response_transfer_coding != HtpTransferCoding::NoBody {
                 let _ = self.response_body_data(None);
             }
             // Run hook RESPONSE_COMPLETE.
@@ -910,7 +910,7 @@ impl ConnectionParser {
         // Otherwise finalize the transaction
         self.finalize(response_index)?;
         self.response_next();
-        self.response_state = State::IDLE;
+        self.response_state = State::Idle;
         Ok(())
     }
 

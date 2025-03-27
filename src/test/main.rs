@@ -982,7 +982,7 @@ fn InvalidHtpProtocol() {
 
     assert_eq!(HtpRequestProgress::COMPLETE, tx.request_progress);
 
-    assert_eq!(HtpProtocol::INVALID, tx.request_protocol_number);
+    assert_eq!(HtpProtocol::Invalid, tx.request_protocol_number);
 }
 
 #[test]
@@ -2152,7 +2152,7 @@ fn UnknownStatusNumber() {
     assert_eq!(1, t.connp.tx_size());
     let tx = t.connp.tx(0).unwrap();
 
-    assert_eq!(tx.response_status_number, HtpResponseNumber::UNKNOWN);
+    assert_eq!(tx.response_status_number, HtpResponseNumber::Unknown);
 }
 
 #[test]
@@ -2311,7 +2311,7 @@ fn HttpStartFromResponse() {
     );
     assert!(tx.response_status_number.eq_num(200));
 
-    assert_eq!(HtpProtocol::UNKNOWN, tx.request_protocol_number);
+    assert_eq!(HtpProtocol::Unknown, tx.request_protocol_number);
     assert_eq!(HtpProtocol::V1_1, tx.response_protocol_number);
 
     assert_eq!(HtpRequestProgress::COMPLETE, tx.request_progress);

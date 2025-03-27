@@ -265,7 +265,7 @@ fn protocol_version(input: &[u8]) -> IResult<&[u8], (&[u8], bool)> {
 pub(crate) fn parse_protocol(input: &[u8], logger: &mut Logger) -> HtpProtocol {
     if let Ok((remaining, (version, contains_trailing))) = protocol_version(input) {
         if !remaining.is_empty() {
-            return HtpProtocol::INVALID;
+            return HtpProtocol::Invalid;
         }
         if contains_trailing {
             htp_warn!(
@@ -278,10 +278,10 @@ pub(crate) fn parse_protocol(input: &[u8], logger: &mut Logger) -> HtpProtocol {
             b".9" => HtpProtocol::V0_9,
             b"1.0" => HtpProtocol::V1_0,
             b"1.1" => HtpProtocol::V1_1,
-            _ => HtpProtocol::INVALID,
+            _ => HtpProtocol::Invalid,
         }
     } else {
-        HtpProtocol::INVALID
+        HtpProtocol::Invalid
     }
 }
 
@@ -290,17 +290,17 @@ pub(crate) fn parse_status(status: &[u8]) -> HtpResponseNumber {
     if let Ok((trailing_data, (leading_data, status_code))) = ascii_digits(status) {
         if !trailing_data.is_empty() || !leading_data.is_empty() {
             //There are invalid characters in the status code
-            return HtpResponseNumber::INVALID;
+            return HtpResponseNumber::Invalid;
         }
         if let Ok(status_code) = std::str::from_utf8(status_code) {
             if let Ok(status_code) = status_code.parse::<u16>() {
                 if (100..=999).contains(&status_code) {
-                    return HtpResponseNumber::VALID(status_code);
+                    return HtpResponseNumber::Valid(status_code);
                 }
             }
         }
     }
-    HtpResponseNumber::INVALID
+    HtpResponseNumber::Invalid
 }
 
 /// Parses Digest Authorization request header.
@@ -417,13 +417,13 @@ mod test {
     }
 
     #[rstest]
-    #[case("   200    ", HtpResponseNumber::VALID(200))]
-    #[case("  \t 404    ", HtpResponseNumber::VALID(404))]
-    #[case("123", HtpResponseNumber::VALID(123))]
-    #[case("99", HtpResponseNumber::INVALID)]
-    #[case("1000", HtpResponseNumber::INVALID)]
-    #[case("200 OK", HtpResponseNumber::INVALID)]
-    #[case("NOT 200", HtpResponseNumber::INVALID)]
+    #[case("   200    ", HtpResponseNumber::Valid(200))]
+    #[case("  \t 404    ", HtpResponseNumber::Valid(404))]
+    #[case("123", HtpResponseNumber::Valid(123))]
+    #[case("99", HtpResponseNumber::Invalid)]
+    #[case("1000", HtpResponseNumber::Invalid)]
+    #[case("200 OK", HtpResponseNumber::Invalid)]
+    #[case("NOT 200", HtpResponseNumber::Invalid)]
     fn test_parse_status(#[case] input: &str, #[case] expected: HtpResponseNumber) {
         assert_eq!(parse_status(&Bstr::from(input)), expected);
     }

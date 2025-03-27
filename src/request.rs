@@ -33,7 +33,7 @@ const HTTP09_MAX_JUNK_LEN: usize = 16;
 pub enum HtpMethod {
     /// Used by default, until the method is determined (e.g., before
     /// the request line is processed.
-    UNKNOWN,
+    Unknown,
     /// HEAD
     HEAD,
     /// GET
@@ -89,7 +89,7 @@ pub enum HtpMethod {
     /// MERGE
     MERGE,
     /// INVALID
-    INVALID,
+    Invalid,
     /// ERROR
     ERROR,
 }
@@ -124,9 +124,9 @@ impl HtpMethod {
             b"MKACTIVITY" => HtpMethod::MKACTIVITY,
             b"BASELINE-CONTROL" => HtpMethod::BASELINE_CONTROL,
             b"MERGE" => HtpMethod::MERGE,
-            b"INVALID" => HtpMethod::INVALID,
+            b"INVALID" => HtpMethod::Invalid,
             b"HEAD" => HtpMethod::HEAD,
-            _ => HtpMethod::UNKNOWN,
+            _ => HtpMethod::Unknown,
         }
     }
 }
@@ -171,7 +171,7 @@ impl ConnectionParser {
             return Ok(());
         }
 
-        if self.request_state == State::HEADERS {
+        if self.request_state == State::Headers {
             // ensured by caller
             let req = self.request().unwrap();
             let header_fn = Some(req.cfg.hook_request_header_data.clone());
@@ -240,13 +240,13 @@ impl ConnectionParser {
         // response in order to determine if the tunneling request
         // was a success.
         if req.unwrap().request_method_number == HtpMethod::CONNECT {
-            self.request_state = State::CONNECT_WAIT_RESPONSE;
+            self.request_state = State::ConnectWaitResponse;
             self.request_status = HtpStreamState::DATA_OTHER;
             return Err(HtpStatus::DATA_OTHER);
         }
         // Continue to the next step to determine
         // the presence of request body
-        self.request_state = State::BODY_DETERMINE;
+        self.request_state = State::BodyDetermine;
         Ok(())
     }
 
@@ -274,7 +274,7 @@ impl ConnectionParser {
         // We skip leading whitespace as IIS allows this.
         let res = tuple((take_is_space, take_not_is_space))(buffered.as_slice());
         if let Ok((_, (_, method))) = res {
-            if HtpMethod::new(method) == HtpMethod::UNKNOWN {
+            if HtpMethod::new(method) == HtpMethod::Unknown {
                 self.request_status = HtpStreamState::TUNNEL;
                 self.response_status = HtpStreamState::TUNNEL
             } else {
@@ -308,10 +308,10 @@ impl ConnectionParser {
             // The requested tunnel was established: we are going
             // to probe the remaining data on this stream to see
             // if we need to ignore it or parse it
-            self.request_state = State::CONNECT_PROBE_DATA;
+            self.request_state = State::ConnectProbeData;
         } else {
             // No tunnel; continue to the next transaction
-            self.request_state = State::FINALIZE
+            self.request_state = State::Finalize
         }
         Ok(())
     }
@@ -333,7 +333,7 @@ impl ConnectionParser {
             let len = line.len();
             req.request_message_len = req.request_message_len.wrapping_add(len as u64);
             self.request_data_consume(input, len);
-            self.request_state = State::BODY_CHUNKED_LENGTH;
+            self.request_state = State::BodyChunkedLength;
             Ok(())
         } else {
             req.request_message_len = req.request_message_len.wrapping_add(input.len() as u64);
@@ -364,7 +364,7 @@ impl ConnectionParser {
             *len -= bytes_to_consume as u64;
             if *len == 0 {
                 // End of the chunk.
-                self.request_state = State::BODY_CHUNKED_DATA_END;
+                self.request_state = State::BodyChunkedDataEnd;
                 return Ok(());
             }
         }
@@ -417,12 +417,12 @@ impl ConnectionParser {
                 match len.cmp(&0) {
                     Ordering::Equal => {
                         // End of data
-                        self.request_state = State::HEADERS;
+                        self.request_state = State::Headers;
                         self.request_mut().unwrap().request_progress = HtpRequestProgress::TRAILER
                     }
                     Ordering::Greater => {
                         // More data available.
-                        self.request_state = State::BODY_CHUNKED_DATA
+                        self.request_state = State::BodyChunkedData
                     }
                     _ => {}
                 }
@@ -486,7 +486,7 @@ impl ConnectionParser {
             return Err(HtpStatus::DATA);
         }
         // End of request body.
-        self.request_state = State::FINALIZE;
+        self.request_state = State::Finalize;
         // Sends close signal to decompressors, outputting any partially decompressed data
         self.request_body_data(None)
     }
@@ -505,26 +505,26 @@ impl ConnectionParser {
         // Determine the next state based on the presence of the request
         // body, and the coding used.
         match req.request_transfer_coding {
-            HtpTransferCoding::CHUNKED => {
+            HtpTransferCoding::Chunked => {
                 req.request_progress = HtpRequestProgress::BODY;
-                self.request_state = State::BODY_CHUNKED_LENGTH
+                self.request_state = State::BodyChunkedLength
             }
-            HtpTransferCoding::IDENTITY => {
+            HtpTransferCoding::Identity => {
                 if req.request_content_length > Some(0) {
                     req.request_progress = HtpRequestProgress::BODY;
                 }
                 self.request_content_length = req.request_content_length;
                 self.request_body_data_left = self.request_content_length;
                 if self.request_content_length > Some(0) {
-                    self.request_state = State::BODY_IDENTITY
+                    self.request_state = State::BodyIdentity
                 } else {
-                    self.request_state = State::FINALIZE
+                    self.request_state = State::Finalize
                 }
             }
-            HtpTransferCoding::NO_BODY => {
+            HtpTransferCoding::NoBody => {
                 // This request does not have a body, which
                 // means that we're done with it
-                self.request_state = State::FINALIZE
+                self.request_state = State::Finalize
             }
             _ => {
                 // Should not be here
@@ -629,7 +629,7 @@ impl ConnectionParser {
         if !req.is_protocol_0_9 {
             // Switch to request header parsing.
             req.request_progress = HtpRequestProgress::HEADERS;
-            self.request_state = State::HEADERS
+            self.request_state = State::Headers
         } else {
             if let Ok((rem, sp)) = take_is_space(input.as_slice()) {
                 if !rem.is_empty() || sp.len() > HTTP09_MAX_JUNK_LEN {
@@ -642,12 +642,12 @@ impl ConnectionParser {
                         "Request line: missing protocol"
                     );
                     // Switch to request header parsing.
-                    self.request_state = State::HEADERS;
+                    self.request_state = State::Headers;
                     return Ok(());
                 }
             }
             // We're done with this request.
-            self.request_state = State::FINALIZE;
+            self.request_state = State::Finalize;
         }
         Ok(())
     }
@@ -909,7 +909,7 @@ impl ConnectionParser {
 
                 let requestline_leading_whitespace_unwanted =
                     self.cfg.requestline_leading_whitespace_unwanted;
-                if requestline_leading_whitespace_unwanted != HtpUnwanted::IGNORE {
+                if requestline_leading_whitespace_unwanted != HtpUnwanted::Ignore {
                     // reset mstart so that we copy the whitespace into the method
                     mstart = true;
                     // set expected response code to this anomaly
@@ -943,7 +943,7 @@ impl ConnectionParser {
                 let req = self.request_mut().unwrap();
                 req.is_protocol_0_9 = true;
                 req.request_protocol_number = HtpProtocol::V0_9;
-                if req.request_method_number == HtpMethod::UNKNOWN {
+                if req.request_method_number == HtpMethod::Unknown {
                     htp_warn!(
                         self.logger,
                         HtpLogCode::REQUEST_LINE_UNKNOWN_METHOD,
@@ -986,7 +986,7 @@ impl ConnectionParser {
                 // No, this looks like a HTTP/0.9 request.
                 req.is_protocol_0_9 = true;
                 req.request_protocol_number = HtpProtocol::V0_9;
-                if req.request_method_number == HtpMethod::UNKNOWN {
+                if req.request_method_number == HtpMethod::Unknown {
                     htp_warn!(
                         self.logger,
                         HtpLogCode::REQUEST_LINE_UNKNOWN_METHOD_NO_PROTOCOL,
@@ -1001,8 +1001,8 @@ impl ConnectionParser {
             self.request_mut().unwrap().request_protocol_number =
                 parse_protocol(protocol, &mut self.logger);
             let req = self.request().unwrap();
-            if req.request_method_number == HtpMethod::UNKNOWN
-                && req.request_protocol_number == HtpProtocol::INVALID
+            if req.request_method_number == HtpMethod::Unknown
+                && req.request_protocol_number == HtpProtocol::Invalid
             {
                 htp_warn!(
                     self.logger,
@@ -1037,10 +1037,10 @@ impl ConnectionParser {
             .request_message_len
             .wrapping_add(data.unwrap_or(b"").len() as u64);
         match req.request_content_encoding_processing {
-            HtpContentEncoding::GZIP
-            | HtpContentEncoding::DEFLATE
-            | HtpContentEncoding::ZLIB
-            | HtpContentEncoding::LZMA => {
+            HtpContentEncoding::Gzip
+            | HtpContentEncoding::Deflate
+            | HtpContentEncoding::Zlib
+            | HtpContentEncoding::Lzma => {
                 // Send data buffer to the decompressor if it exists
                 if req.request_decompressor.is_none() && data.is_none() {
                     return Ok(());
@@ -1051,9 +1051,8 @@ impl ConnectionParser {
                     if decompressor.time_spent()
                         > self.cfg.compression_options.get_time_limit() as u64
                     {
-                        htp_log!(
+                        htp_error!(
                             self.logger,
-                            HtpLogLevel::ERROR,
                             HtpLogCode::COMPRESSION_BOMB,
                             format!(
                                 "Compression bomb: spent {} us decompressing",
@@ -1071,7 +1070,7 @@ impl ConnectionParser {
                     let _ = decompressor.finish();
                 }
             }
-            HtpContentEncoding::NONE => {
+            HtpContentEncoding::None => {
                 // When there's no decompression, request_entity_len.
                 // is identical to request_message_len.
                 // None data is used to indicate the end of request body.
@@ -1122,23 +1121,23 @@ impl ConnectionParser {
             if ce.cmp_nocase_nozero(b"gzip") == Ordering::Equal
                 || ce.cmp_nocase_nozero(b"x-gzip") == Ordering::Equal
             {
-                HtpContentEncoding::GZIP
+                HtpContentEncoding::Gzip
             } else if ce.cmp_nocase_nozero(b"deflate") == Ordering::Equal
                 || ce.cmp_nocase_nozero(b"x-deflate") == Ordering::Equal
             {
-                HtpContentEncoding::DEFLATE
+                HtpContentEncoding::Deflate
             } else if ce.cmp_nocase_nozero(b"lzma") == Ordering::Equal {
-                HtpContentEncoding::LZMA
+                HtpContentEncoding::Lzma
             } else if ce.cmp_nocase_nozero(b"inflate") == Ordering::Equal
                 || ce.cmp_nocase_nozero(b"none") == Ordering::Equal
             {
-                HtpContentEncoding::NONE
+                HtpContentEncoding::None
             } else {
                 slow_path = true;
-                HtpContentEncoding::NONE
+                HtpContentEncoding::None
             }
         } else {
-            HtpContentEncoding::NONE
+            HtpContentEncoding::None
         };
 
         // Configure decompression, if enabled in the configuration.
@@ -1148,20 +1147,20 @@ impl ConnectionParser {
             self.request().unwrap().request_content_encoding
         } else {
             slow_path = false;
-            HtpContentEncoding::NONE
+            HtpContentEncoding::None
         };
 
         let req = self.request_mut().unwrap();
         let request_content_encoding_processing = req.request_content_encoding_processing;
         let compression_options = self.cfg.compression_options;
         match &request_content_encoding_processing {
-            HtpContentEncoding::GZIP
-            | HtpContentEncoding::DEFLATE
-            | HtpContentEncoding::ZLIB
-            | HtpContentEncoding::LZMA => {
+            HtpContentEncoding::Gzip
+            | HtpContentEncoding::Deflate
+            | HtpContentEncoding::Zlib
+            | HtpContentEncoding::Lzma => {
                 self.request_prepend_decompressor(request_content_encoding_processing)?;
             }
-            HtpContentEncoding::NONE => {
+            HtpContentEncoding::None => {
                 if slow_path {
                     if let Some(ce) = &ce {
                         let mut layers = 0;
@@ -1194,7 +1193,7 @@ impl ConnectionParser {
                                         "C-E gzip has abnormal value"
                                     );
                                 }
-                                HtpContentEncoding::GZIP
+                                HtpContentEncoding::Gzip
                             } else if encoding.index_of_nocase(b"deflate").is_some() {
                                 if !(encoding.cmp_slice(b"deflate") == Ordering::Equal
                                     || encoding.cmp_slice(b"x-deflate") == Ordering::Equal)
@@ -1205,7 +1204,7 @@ impl ConnectionParser {
                                         "C-E deflate has abnormal value"
                                     );
                                 }
-                                HtpContentEncoding::DEFLATE
+                                HtpContentEncoding::Deflate
                             } else if encoding.cmp_slice(b"lzma") == Ordering::Equal {
                                 if let Some(limit) = compression_options.get_lzma_layers() {
                                     // LZMA decompression layer depth check
@@ -1218,18 +1217,18 @@ impl ConnectionParser {
                                         break;
                                     }
                                 }
-                                HtpContentEncoding::LZMA
+                                HtpContentEncoding::Lzma
                             } else if encoding.cmp_slice(b"inflate") == Ordering::Equal
                                 || encoding.cmp_slice(b"none") == Ordering::Equal
                             {
-                                HtpContentEncoding::NONE
+                                HtpContentEncoding::None
                             } else {
                                 htp_warn!(
                                     self.logger,
                                     HtpLogCode::ABNORMAL_CE_HEADER,
                                     "C-E unknown setting"
                                 );
-                                HtpContentEncoding::NONE
+                                HtpContentEncoding::None
                             };
                             self.request_prepend_decompressor(encoding)?;
                         }
@@ -1243,7 +1242,7 @@ impl ConnectionParser {
     /// Prepend a decompressor to the request
     fn request_prepend_decompressor(&mut self, encoding: HtpContentEncoding) -> Result<()> {
         let compression_options = self.cfg.compression_options;
-        if encoding != HtpContentEncoding::NONE {
+        if encoding != HtpContentEncoding::None {
             // ensured by caller
             let req = self.request_mut().unwrap();
             if let Some(decompressor) = req.request_decompressor.take() {
@@ -1296,9 +1295,8 @@ impl ConnectionParser {
                 if let Some(time_spent) = decompressor.timer_reset() {
                     if time_spent > compression_options.get_time_limit() as u64 {
                         decompressor.set_passthrough(true);
-                        htp_log!(
+                        htp_error!(
                             self.logger,
-                            HtpLogLevel::ERROR,
                             HtpLogCode::COMPRESSION_BOMB,
                             format!("Compression bomb: spent {} us decompressing", time_spent)
                         );
@@ -1321,9 +1319,8 @@ impl ConnectionParser {
         let request_entity_len = req.request_entity_len;
         let request_message_len = req.request_message_len;
         if request_entity_len > bomb_limit && exceeds_ratio {
-            htp_log!(
+            htp_error!(
                 self.logger,
-                HtpLogLevel::ERROR,
                 HtpLogCode::COMPRESSION_BOMB,
                 format!(
                     "Compression bomb: decompressed {} bytes out of {}",
@@ -1388,7 +1385,7 @@ impl ConnectionParser {
                 self.request_buf.clear();
                 return rc;
             }
-            if HtpMethod::new(method) == HtpMethod::UNKNOWN {
+            if HtpMethod::new(method) == HtpMethod::Unknown {
                 if self.request_body_data_left.unwrap_or(0) == 0 {
                     // log only once per transaction
                     htp_warn!(
@@ -1559,9 +1556,9 @@ impl ConnectionParser {
         {
             // handle gap
             if chunk.is_gap()
-                && self.request_state != State::BODY_IDENTITY
-                && self.request_state != State::IGNORE_DATA_AFTER_HTTP_0_9
-                && self.request_state != State::FINALIZE
+                && self.request_state != State::BodyIdentity
+                && self.request_state != State::IgnoreDataAfterHTTP09
+                && self.request_state != State::Finalize
             {
                 // go to request_connect_probe_data ?
                 htp_error!(
@@ -1626,9 +1623,9 @@ mod test {
     #[case(b"GET", HtpMethod::GET)]
     #[case(b"PUT", HtpMethod::PUT)]
     #[case(b"POST", HtpMethod::POST)]
-    #[case(b"PoST", HtpMethod::UNKNOWN)]
-    #[case(b"post", HtpMethod::UNKNOWN)]
-    #[case(b"NOT_METHOD", HtpMethod::UNKNOWN)]
+    #[case(b"PoST", HtpMethod::Unknown)]
+    #[case(b"post", HtpMethod::Unknown)]
+    #[case(b"NOT_METHOD", HtpMethod::Unknown)]
     fn test_method(#[case] input: &[u8], #[case] expected: HtpMethod) {
         assert_eq!(HtpMethod::new(input), expected);
     }

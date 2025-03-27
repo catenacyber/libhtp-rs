@@ -185,15 +185,15 @@ impl Decompress for CallbackWriter {
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub(crate) enum HtpContentEncoding {
     /// No compression.
-    NONE,
+    None,
     /// Gzip compression.
-    GZIP,
+    Gzip,
     /// Deflate compression (RFC 1951).
-    DEFLATE,
+    Deflate,
     /// Deflate compression with zlib header (RFC 1950)
-    ZLIB,
+    Zlib,
     /// LZMA compression.
-    LZMA,
+    Lzma,
 }
 
 /// The outer decompressor tracks the number of callbacks and time spent
@@ -238,11 +238,11 @@ impl Decompressor {
         options: Options,
     ) -> std::io::Result<Self> {
         match encoding {
-            HtpContentEncoding::NONE => Ok(Decompressor::new(self.inner)),
-            HtpContentEncoding::GZIP
-            | HtpContentEncoding::DEFLATE
-            | HtpContentEncoding::ZLIB
-            | HtpContentEncoding::LZMA => Ok(Decompressor::new(Box::new(InnerDecompressor::new(
+            HtpContentEncoding::None => Ok(Decompressor::new(self.inner)),
+            HtpContentEncoding::Gzip
+            | HtpContentEncoding::Deflate
+            | HtpContentEncoding::Zlib
+            | HtpContentEncoding::Lzma => Ok(Decompressor::new(Box::new(InnerDecompressor::new(
                 encoding, self.inner, options,
             )?))),
         }
@@ -689,16 +689,16 @@ impl InnerDecompressor {
         let buf = Cursor::new(Box::new([0u8; ENCODING_CHUNK_SIZE]) as Box<[u8]>);
 
         match encoding {
-            HtpContentEncoding::GZIP => Ok((Box::new(GzipBufWriter::new(buf)), false)),
-            HtpContentEncoding::DEFLATE => Ok((
+            HtpContentEncoding::Gzip => Ok((Box::new(GzipBufWriter::new(buf)), false)),
+            HtpContentEncoding::Deflate => Ok((
                 Box::new(DeflateBufWriter(flate2::write::DeflateDecoder::new(buf))),
                 false,
             )),
-            HtpContentEncoding::ZLIB => Ok((
+            HtpContentEncoding::Zlib => Ok((
                 Box::new(ZlibBufWriter(flate2::write::ZlibDecoder::new(buf))),
                 false,
             )),
-            HtpContentEncoding::LZMA => {
+            HtpContentEncoding::Lzma => {
                 if let Some(options) = options.lzma {
                     Ok((
                         Box::new(LzmaBufWriter(
@@ -710,7 +710,7 @@ impl InnerDecompressor {
                     Ok((Box::new(NullBufWriter(buf)), true))
                 }
             }
-            HtpContentEncoding::NONE => Err(std::io::Error::new(
+            HtpContentEncoding::None => Err(std::io::Error::new(
                 std::io::ErrorKind::Other,
                 "expected a valid encoding",
             )),
@@ -900,11 +900,11 @@ impl Decompress for InnerDecompressor {
         if self.restarts < 3 {
             // first retry the same encoding type
             self.encoding = match self.encoding {
-                HtpContentEncoding::GZIP => HtpContentEncoding::DEFLATE,
-                HtpContentEncoding::DEFLATE => HtpContentEncoding::ZLIB,
-                HtpContentEncoding::ZLIB => HtpContentEncoding::GZIP,
-                HtpContentEncoding::LZMA => HtpContentEncoding::DEFLATE,
-                HtpContentEncoding::NONE => {
+                HtpContentEncoding::Gzip => HtpContentEncoding::Deflate,
+                HtpContentEncoding::Deflate => HtpContentEncoding::Zlib,
+                HtpContentEncoding::Zlib => HtpContentEncoding::Gzip,
+                HtpContentEncoding::Lzma => HtpContentEncoding::Deflate,
+                HtpContentEncoding::None => {
                     return Err(std::io::Error::new(
                         std::io::ErrorKind::Other,
                         "expected a valid encoding",
