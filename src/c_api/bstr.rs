@@ -114,19 +114,19 @@ pub unsafe extern "C" fn bstr_util_strdup_to_c(b: *const Bstr) -> *mut libc::c_c
         }
     }
     let newlen = bstr_len(b) + null_count;
-    let mem = libc::malloc(newlen) as *mut i8;
+    let mem = libc::malloc(newlen) as *mut libc::c_char;
     if mem.is_null() {
         return std::ptr::null_mut();
     }
-    let dst: &mut [i8] = std::slice::from_raw_parts_mut(mem, newlen);
+    let dst: &mut [libc::c_char] = std::slice::from_raw_parts_mut(mem, newlen);
     let mut dst_idx = 0;
     for byte in src {
         if *byte == 0 {
-            dst[dst_idx] = '\\' as i8;
+            dst[dst_idx] = '\\' as libc::c_char;
             dst_idx += 1;
-            dst[dst_idx] = '0' as i8;
+            dst[dst_idx] = '0' as libc::c_char;
         } else {
-            dst[dst_idx] = *byte as i8;
+            dst[dst_idx] = *byte as libc::c_char;
         }
         dst_idx += 1;
     }
